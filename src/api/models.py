@@ -105,3 +105,18 @@ class EvaluationResponse(BaseModel):
     metrics: List[EvaluationMetric] = Field(default_factory=list)
     summary: str = Field("")
     per_category: Dict[str, Any] = Field(default_factory=dict)
+
+
+class QuotaResponse(BaseModel):
+    daily_remaining: int = 0
+    rpm_remaining: int = 0
+    daily_used: int = 0
+    status: str = "ok"
+
+
+class MetricsResponse(BaseModel):
+    queries_answered: int = 0
+    docs_uploaded: int = 0
+    total_vectors: int = 0
+    visual_vectors: int = 0
+    gemini_quota: Dict[str, Any] = {}

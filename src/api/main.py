@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 # ---------------------------------------------------------------------------
@@ -508,7 +508,16 @@ async def upload_document(file: UploadFile = File(...)):
     filename = file.filename or "unknown"
     ext = Path(filename).suffix.lower()
 
-    allowed_extensions = {".pdf", ".csv", ".txt", ".log", ".md", ".eml"}
+    allowed_extensions = {
+        ".pdf", ".csv", ".txt", ".log", ".md", ".eml",
+        ".docx", ".pptx", ".xlsx", ".xls",
+        ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif",
+        ".mp4", ".avi", ".mov",
+        ".mp3", ".wav", ".m4a",
+        ".html", ".htm",
+        ".py", ".js", ".ts", ".java", ".go", ".rs",
+        ".json", ".yaml", ".yml",
+    }
     if ext not in allowed_extensions:
         raise HTTPException(
             status_code=400,
@@ -779,6 +788,67 @@ async def submit_feedback(request: FeedbackRequest):
     except Exception as exc:
         logger.error("Failed to save feedback: %s", exc)
         raise HTTPException(status_code=500, detail=f"Failed to save feedback: {exc}")
+
+
+@app.get("/api/assets/{asset_id}")
+async def get_asset(asset_id: str):
+    try:
+        from src.ingestion.asset_store import AssetStore
+        store = AssetStore()
+        path = store.get_path(asset_id)
+        if path is None:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        return FileResponse(path)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/quota")
+async def gemini_quota():
+    try:
+        from config.settings import GEMINI_API_KEY
+        from src.gemini.client import GeminiClient
+        if not GEMINI_API_KEY:
+            return {"daily_remaining": 0, "rpm_remaining": 0, "daily_used": 0, "status": "no_api_key"}
+        client = GeminiClient(api_key=GEMINI_API_KEY)
+        return client.quota_remaining()
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+@app.get("/api/metrics")
+async def system_metrics():
+    total_vectors = 0
+    visual_vectors = 0
+    try:
+        vs = _get_vector_store()
+        total_vectors = vs.total_vectors
+    except Exception:
+        pass
+    try:
+        from src.embedding.visual_store import VisualVectorStore
+        vvs = VisualVectorStore()
+        visual_vectors = vvs.total_vectors
+    except Exception:
+        pass
+    gemini_quota = {}
+    try:
+        from config.settings import GEMINI_API_KEY
+        if GEMINI_API_KEY:
+            from src.gemini.client import GeminiClient
+            client = GeminiClient(api_key=GEMINI_API_KEY)
+            gemini_quota = client.quota_remaining()
+    except Exception:
+        pass
+    return {
+        "queries_answered": _state.get("queries_answered", 0),
+        "docs_uploaded": _state.get("docs_uploaded", 0),
+        "total_vectors": total_vectors,
+        "visual_vectors": visual_vectors,
+        "gemini_quota": gemini_quota,
+    }
 
 
 @app.get("/api/evaluation", response_model=EvaluationResponse)
