@@ -121,6 +121,12 @@ class EnterpriseRAGOrchestrator:
         self._source_attributor = None
         self._feedback_store = None
         self._evaluator = None
+        self._clip_engine = None
+        self._visual_store = None
+        self._asset_store = None
+        self._captioner = None
+        self._multimodal_retriever = None
+        self._answer_generator = None
 
         # State
         self._documents: List[Any] = []
@@ -272,6 +278,66 @@ class EnterpriseRAGOrchestrator:
             )
         return self._evaluator
 
+    def _get_clip_engine(self):
+        if self._clip_engine is None:
+            from src.embedding.clip_engine import CLIPEngine
+            self._clip_engine = CLIPEngine()
+        return self._clip_engine
+
+    def _get_visual_store(self):
+        if self._visual_store is None:
+            from src.embedding.visual_store import VisualVectorStore
+            self._visual_store = VisualVectorStore()
+        return self._visual_store
+
+    def _get_asset_store(self):
+        if self._asset_store is None:
+            from src.ingestion.asset_store import AssetStore
+            self._asset_store = AssetStore()
+        return self._asset_store
+
+    def _get_captioner(self):
+        if self._captioner is None:
+            from config.settings import GEMINI_API_KEY
+            if GEMINI_API_KEY:
+                from src.gemini.captioner import ImageCaptioner
+                self._captioner = ImageCaptioner(api_key=GEMINI_API_KEY)
+        return self._captioner
+
+    def _get_answer_generator(self):
+        if self._answer_generator is None:
+            from config.settings import GEMINI_API_KEY, GEMINI_MODEL
+            if GEMINI_API_KEY:
+                from src.gemini.generator import AnswerGenerator
+                self._answer_generator = AnswerGenerator(api_key=GEMINI_API_KEY, model_name=GEMINI_MODEL)
+        return self._answer_generator
+
+    def _get_multimodal_retriever(self):
+        if self._multimodal_retriever is None:
+            from src.retrieval.multimodal_retriever import MultimodalRetriever
+            from src.retrieval.query_analyzer import QueryAnalyzer
+
+            def text_search(query, top_k=5):
+                retriever = self._get_retriever()
+                results = retriever.retrieve(query, top_k=top_k)
+                return [{"text": chunk.text, "doc_id": chunk.doc_id, "score": score,
+                         "modality": chunk.metadata.get("modality", "text"),
+                         "source": chunk.metadata.get("source", chunk.doc_id),
+                         **chunk.metadata} for chunk, score in results]
+
+            def visual_search(query, top_k=5):
+                try:
+                    clip = self._get_clip_engine()
+                    vs = self._get_visual_store()
+                    query_vec = clip.embed_text(query)
+                    return vs.search(query_vec, top_k=top_k)
+                except Exception:
+                    return []
+
+            self._multimodal_retriever = MultimodalRetriever(
+                text_search_fn=text_search, visual_search_fn=visual_search, query_analyzer=QueryAnalyzer())
+        return self._multimodal_retriever
+
     # ------------------------------------------------------------------
     # Handler registration for QueryRouter
     # ------------------------------------------------------------------
@@ -351,7 +417,31 @@ class EnterpriseRAGOrchestrator:
         }
 
     def _handle_standard(self, query: str, **kwargs) -> Dict[str, Any]:
-        """Standard RAG retrieval and answer generation."""
+        """Standard RAG retrieval and answer generation.
+
+        Tries the multimodal path (AnswerGenerator + MultimodalRetriever) first;
+        falls back to the text-only RAGPipeline if the generator is unavailable
+        or raises an exception.
+        """
+        try:
+            generator = self._get_answer_generator()
+            if generator is not None:
+                retriever = self._get_multimodal_retriever()
+                chunks = retriever.retrieve(query)
+                result = generator.generate(query, chunks)
+                return {
+                    "answer": result.get("answer", ""),
+                    "query_type": "standard",
+                    "confidence": result.get("confidence", 0.0),
+                    "sources": result.get("sources", []),
+                    "faithfulness": result.get("faithfulness", None),
+                    "citation_verified": result.get("citation_verified", False),
+                    "warning": result.get("warning", None),
+                }
+        except Exception as exc:
+            logger.warning("Multimodal path failed, falling back to text-only RAG: %s", exc)
+
+        # Fallback: text-only RAG pipeline
         rag = self._get_rag_pipeline()
         result = rag.answer(query)
         return {
