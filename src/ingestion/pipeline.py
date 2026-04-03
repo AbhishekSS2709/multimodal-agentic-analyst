@@ -16,15 +16,35 @@ import os
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
+from .audio_loader import load_audio
+from .code_loader import load_code
 from .csv_loader import load_csv
+from .docx_loader import load_docx
+from .excel_loader import load_excel
+from .html_loader import load_html
+from .image_loader import load_image as _load_image_raw
+from .json_yaml_loader import load_json_yaml
 from .metadata_tagger import tag_documents
 from .pdf_loader import Document, load_pdf
+from .pptx_loader import load_pptx
 from .txt_loader import load_txt
+from .video_loader import load_video as _load_video_raw
+
+
+def _load_image_wrapper(file_path: str, **kwargs) -> List[Document]:
+    result = _load_image_raw(file_path, **kwargs)
+    return result.text_documents
+
+
+def _load_video_wrapper(file_path: str, **kwargs) -> List[Document]:
+    result = _load_video_raw(file_path, **kwargs)
+    return result.text_documents
 
 logger = logging.getLogger(__name__)
 
 # Mapping from file extension (lowercase, with dot) to the loader function.
 _LOADER_MAP: Dict[str, callable] = {
+    # Existing
     ".pdf": load_pdf,
     ".csv": load_csv,
     ".txt": load_txt,
@@ -32,12 +52,50 @@ _LOADER_MAP: Dict[str, callable] = {
     ".text": load_txt,
     ".md": load_txt,
     ".eml": load_txt,
+    # Documents
+    ".docx": load_docx,
+    ".pptx": load_pptx,
+    ".xlsx": load_excel,
+    ".xls": load_excel,
+    # Web
+    ".html": load_html,
+    ".htm": load_html,
+    # Code
+    ".py": load_code,
+    ".js": load_code,
+    ".ts": load_code,
+    ".java": load_code,
+    ".cpp": load_code,
+    ".c": load_code,
+    ".go": load_code,
+    ".rs": load_code,
+    ".rb": load_code,
+    ".php": load_code,
+    ".sh": load_code,
+    # Structured
+    ".json": load_json_yaml,
+    ".yaml": load_json_yaml,
+    ".yml": load_json_yaml,
+    # Audio
+    ".mp3": load_audio,
+    ".wav": load_audio,
+    ".m4a": load_audio,
+    # Images
+    ".png": _load_image_wrapper,
+    ".jpg": _load_image_wrapper,
+    ".jpeg": _load_image_wrapper,
+    ".webp": _load_image_wrapper,
+    ".bmp": _load_image_wrapper,
+    ".gif": _load_image_wrapper,
+    # Video
+    ".mp4": _load_video_wrapper,
+    ".avi": _load_video_wrapper,
+    ".mov": _load_video_wrapper,
 }
 
 # Extensions that are silently skipped when scanning a directory.
 _SKIP_EXTENSIONS: Set[str] = {
     ".pyc", ".pyo", ".so", ".dll", ".exe", ".bin",
-    ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico",
     ".zip", ".tar", ".gz", ".bz2", ".7z",
     ".db", ".sqlite", ".sqlite3",
 }
