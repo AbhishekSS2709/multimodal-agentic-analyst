@@ -140,6 +140,43 @@ TEST_CASES: List[Dict[str, Any]] = [
         "category": "edge",
         "notes": "SQL injection attempt — must not be executed literally.",
     },
+
+    # Multimodal test cases
+    {
+        "query": "What does the chart in the quarterly report show?",
+        "expected_answer": "The chart shows revenue trends across quarters.",
+        "expected_modality": "visual",
+        "expected_sources": [],
+        "category": "visual_reasoning",
+    },
+    {
+        "query": "Describe the architecture diagram",
+        "expected_answer": "The architecture diagram shows the system components.",
+        "expected_modality": "visual",
+        "expected_sources": [],
+        "category": "visual_reasoning",
+    },
+    {
+        "query": "What text appears in the scanned document image?",
+        "expected_answer": "The scanned document contains...",
+        "expected_modality": "visual",
+        "expected_sources": [],
+        "category": "ocr_extraction",
+    },
+    {
+        "query": "Summarize the content from the PowerPoint presentation",
+        "expected_answer": "The presentation covers...",
+        "expected_modality": "text",
+        "expected_sources": [],
+        "category": "multimodal_document",
+    },
+    {
+        "query": "What data is in the Excel spreadsheet?",
+        "expected_answer": "The spreadsheet contains...",
+        "expected_modality": "text",
+        "expected_sources": [],
+        "category": "multimodal_document",
+    },
 ]
 
 

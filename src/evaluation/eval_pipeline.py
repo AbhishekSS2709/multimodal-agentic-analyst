@@ -396,6 +396,17 @@ class RAGEvaluator:
         generator = ReportGenerator(output_dir=out_dir)
         return generator.generate_json_report(results)
 
+    def _evaluate_modality(self, test_case: Dict[str, Any], pipeline_result: Dict[str, Any]) -> float:
+        """Check if the retrieval found the correct modality. Returns 1.0 if match, else 0.0."""
+        expected = test_case.get("expected_modality")
+        if not expected:
+            return 1.0
+        sources = pipeline_result.get("sources", [])
+        for src in sources:
+            if isinstance(src, dict) and src.get("modality") == expected:
+                return 1.0
+        return 0.0
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
