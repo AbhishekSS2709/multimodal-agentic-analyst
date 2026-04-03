@@ -118,6 +118,19 @@ def _call_groq(prompt: str, system: str) -> str:
     return data["choices"][0]["message"]["content"].strip()
 
 
+def _call_gemini(prompt: str, system: str) -> str:
+    """Call Gemini API (free tier)."""
+    from src.gemini.client import GeminiClient
+    from config.settings import GEMINI_API_KEY, GEMINI_MODEL, GEMINI_TEMPERATURE
+
+    client = GeminiClient(
+        api_key=GEMINI_API_KEY,
+        model_name=GEMINI_MODEL,
+        temperature=GEMINI_TEMPERATURE,
+    )
+    return client.generate_text(prompt, system=system)
+
+
 def _call_openai(prompt: str, system: str) -> str:
     """Call OpenAI API (paid)."""
     import openai
@@ -266,6 +279,16 @@ def _detect_provider() -> str:
     except Exception:
         pass
 
+    # Try Gemini (free tier)
+    try:
+        from config.settings import GEMINI_API_KEY
+        if GEMINI_API_KEY:
+            _active_provider = "gemini"
+            logger.info("Using Gemini API (free tier).")
+            return _active_provider
+    except ImportError:
+        pass
+
     # Try HuggingFace (free, local, always available if transformers installed)
     try:
         import transformers  # noqa: F401
@@ -322,6 +345,7 @@ def call_llm(
     providers = {
         "ollama": _call_ollama,
         "huggingface": _call_huggingface,
+        "gemini": _call_gemini,
         "groq": _call_groq,
         "openai": _call_openai,
         "none": _template_fallback,
