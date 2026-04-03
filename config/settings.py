@@ -54,6 +54,41 @@ LLM_MODEL = "gpt-3.5-turbo"
 LLM_TEMPERATURE = 0.1
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+# Gemini
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_JUDGE_MODEL = os.getenv("GEMINI_JUDGE_MODEL", "gemini-2.5-pro")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_TEMPERATURE = 0.1
+GEMINI_MAX_OUTPUT_TOKENS = 2048
+GEMINI_MAX_IMAGES_PER_QUERY = 3
+
+# Visual Embedding
+CLIP_MODEL = os.getenv("CLIP_MODEL", "openai/clip-vit-base-patch32")
+CLIP_EMBEDDING_DIMENSION = 512
+
+# Visual FAISS
+VISUAL_FAISS_INDEX_PATH = VECTOR_DB_DIR / "faiss_visual_index"
+
+# Asset Storage
+ASSETS_DIR = DATA_DIR / "assets"
+ASSETS_DIR.mkdir(exist_ok=True)
+
+# Retrieval Weights (defaults, adaptive at runtime)
+DEFAULT_TEXT_WEIGHT = 0.6
+DEFAULT_VISUAL_WEIGHT = 0.4
+
+# Captioning
+CAPTIONING_FALLBACK = "blip2"
+CAPTIONING_QUEUE_RPM = 8
+
+# Upload Security
+MAX_UPLOAD_SIZE_MB = 100
+BLOCKED_MIME_TYPES = ["application/x-executable", "application/x-msdownload"]
+
+# Azure (production)
+AZURE_BLOB_CONNECTION_STRING = os.getenv("AZURE_BLOB_CONNECTION_STRING", "")
+AZURE_SQL_CONNECTION_STRING = os.getenv("AZURE_SQL_CONNECTION_STRING", "")
+
 # Vector DB
 FAISS_INDEX_PATH = VECTOR_DB_DIR / "faiss_index"
 COLLECTION_NAME = "enterprise_docs"
