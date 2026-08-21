@@ -65,3 +65,11 @@ python-magic>=0.4.27
 
 # YAML parsing
 pyyaml>=6.0.0
+
+# LangGraph agentic layer
+langgraph>=1.0.7
+langgraph-checkpoint-sqlite>=2.0.0
+langchain>=1.2.0
+langchain-core>=1.2.0
+langchain-google-genai>=4.2.0
+langsmith>=0.6.0
