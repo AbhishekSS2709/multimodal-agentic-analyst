@@ -28,12 +28,30 @@ _FALLBACK_STOP_WORDS: Set[str] = {
 }
 
 
+def _stem(token: str) -> str:
+    """Crude suffix stripping so ``refund`` matches ``refunds``.
+
+    Deliberately not a real stemmer — it only has to be *consistent* on both
+    sides of a comparison. Without it, simple plural mismatches sink the
+    overlap score and the grader rejects genuinely relevant documents.
+    """
+    if len(token) > 5:
+        for suffix in ("ing", "ed"):
+            if token.endswith(suffix):
+                return token[: -len(suffix)]
+    if len(token) > 3 and token.endswith("s") and not token.endswith("ss"):
+        return token[:-1]
+    return token
+
+
 def tokenize(text: str) -> List[str]:
-    """Lowercase, strip punctuation, drop stop-words."""
+    """Lowercase, strip punctuation, drop stop-words, normalise suffixes."""
     if _eval_tokenize is not None:
-        return _eval_tokenize(text or "")
-    tokens = re.findall(r"[a-z0-9]+", (text or "").lower())
-    return [t for t in tokens if t not in _FALLBACK_STOP_WORDS]
+        raw = _eval_tokenize(text or "")
+    else:
+        raw = [t for t in re.findall(r"[a-z0-9]+", (text or "").lower())
+               if t not in _FALLBACK_STOP_WORDS]
+    return [_stem(t) for t in raw]
 
 
 def overlap_ratio(needle: str, haystack: str) -> float:

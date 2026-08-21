@@ -110,11 +110,17 @@ def synthesizer_node(state: AnalystState) -> Dict[str, Any]:
     question = state.get("question", "")
     findings = list(state.get("findings", []))
 
-    result = _synthesize_llm(question, findings)
+    # On a retry the previous answer failed its groundedness grade, so drop to
+    # the extractive path — it quotes the findings, so it is grounded by
+    # construction. Without this the cycle would just regenerate the same
+    # ungrounded answer.
+    retrying = state.get("retry_count", 0) > 0
+
+    result = None if retrying else _synthesize_llm(question, findings)
     mode = "llm"
     if result is None:
         result = synthesize_heuristic(question, findings)
-        mode = "heuristic"
+        mode = "extractive_retry" if retrying else "heuristic"
 
     answer, citations = result
     return {
