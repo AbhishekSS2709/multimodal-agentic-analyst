@@ -1,5 +1,6 @@
 """Tests for LangSmith evaluators — pure functions, no network."""
 
+import os
 import unittest
 
 
@@ -85,6 +86,23 @@ class TestEvaluators(unittest.TestCase):
 
 class TestDatasetBuilding(unittest.TestCase):
 
+    def setUp(self):
+        # Strip any real LangSmith key. Without this, a developer with a key
+        # configured would have these tests create datasets in their actual
+        # account -- which is exactly what happened once.
+        self._saved = {k: os.environ.pop(k, None)
+                       for k in ("LANGSMITH_API_KEY", "LANGCHAIN_API_KEY")}
+
+    def tearDown(self):
+        for k, v in self._saved.items():
+            if v is not None:
+                os.environ[k] = v
+
+    def test_push_dataset_cannot_touch_a_real_account_in_tests(self):
+        """With no key resolvable, push_dataset must be a no-op."""
+        from src.evaluation.langsmith_eval import push_dataset
+        self.assertIsNone(push_dataset("unit-test-should-never-exist"))
+
     def test_build_examples_from_test_cases(self):
         from src.evaluation.langsmith_eval import build_examples
         examples = build_examples()
@@ -102,10 +120,6 @@ class TestDatasetBuilding(unittest.TestCase):
         self.assertIn("analytics", expected_specialists_for("sql"))
         self.assertIn("graph", expected_specialists_for("reasoning"))
         self.assertIn("visual", expected_specialists_for("visual_reasoning"))
-
-    def test_push_dataset_noop_without_key(self):
-        from src.evaluation.langsmith_eval import push_dataset
-        self.assertIsNone(push_dataset("test-ds", client=None))
 
     def test_mirror_feedback_noop_without_key(self):
         from src.evaluation.langsmith_eval import mirror_feedback
@@ -126,6 +140,34 @@ class TestScoreRun(unittest.TestCase):
         self.assertIn("faithfulness", scores)
         self.assertEqual(scores["answer_correctness"], 1.0)
 
+
+
+
+class TestExperimentScoping(unittest.TestCase):
+    """The free Gemini tier caps daily requests, so experiments must be scopable."""
+
+    def test_select_examples_filters_by_category(self):
+        from src.evaluation.langsmith_eval import select_examples
+        picked = select_examples(categories=["sql"])
+        self.assertTrue(picked)
+        self.assertTrue(all(e["outputs"]["category"] == "sql" for e in picked))
+
+    def test_select_examples_accepts_multiple_categories(self):
+        from src.evaluation.langsmith_eval import select_examples
+        picked = select_examples(categories=["sql", "factual"])
+        self.assertEqual({e["outputs"]["category"] for e in picked}, {"sql", "factual"})
+
+    def test_select_examples_respects_limit(self):
+        from src.evaluation.langsmith_eval import select_examples
+        self.assertEqual(len(select_examples(limit=2)), 2)
+
+    def test_select_examples_unknown_category_is_empty(self):
+        from src.evaluation.langsmith_eval import select_examples
+        self.assertEqual(select_examples(categories=["nope"]), [])
+
+    def test_select_examples_defaults_to_everything(self):
+        from src.evaluation.langsmith_eval import build_examples, select_examples
+        self.assertEqual(len(select_examples()), len(build_examples()))
 
 if __name__ == "__main__":
     unittest.main()

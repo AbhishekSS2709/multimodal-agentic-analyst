@@ -183,6 +183,25 @@ def build_examples() -> List[Dict[str, Any]]:
     return examples
 
 
+def select_examples(
+    categories: Optional[List[str]] = None,
+    limit: Optional[int] = None,
+) -> List[Dict[str, Any]]:
+    """Subset of the example set, for scoped experiment runs.
+
+    The free Gemini tier allows 250 requests/day and one example costs several
+    LLM calls, so a full sweep can exhaust the daily quota. Scoping by category
+    keeps a comparison affordable.
+    """
+    examples = build_examples()
+    if categories is not None:
+        wanted = set(categories)
+        examples = [e for e in examples if e["outputs"].get("category") in wanted]
+    if limit is not None:
+        examples = examples[:limit]
+    return examples
+
+
 def push_dataset(
     name: str = DEFAULT_DATASET,
     client: Optional[Any] = None,
@@ -226,8 +245,10 @@ def run_experiment(
     config: Optional[Dict[str, Any]] = None,
     client: Optional[Any] = None,
     components: Any = None,
+    categories: Optional[List[str]] = None,
+    limit: Optional[int] = None,
 ) -> Dict[str, Any]:
-    """Evaluate the graph over every example and aggregate the scores.
+    """Evaluate the graph over the selected examples and aggregate the scores.
 
     Runs locally regardless of LangSmith availability; results are additionally
     uploaded when a client is configured.  ``config`` is passed through to the
@@ -237,7 +258,7 @@ def run_experiment(
     from src.graph.build import run_query
 
     config = config or {}
-    examples = build_examples()
+    examples = select_examples(categories=categories, limit=limit)
     started = time.time()
 
     per_example: List[Dict[str, Any]] = []

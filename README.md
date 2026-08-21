@@ -43,8 +43,9 @@ graph topology, state reducers, and evaluation design.
 ```bash
 pip install -r requirements.txt
 
-# Ingest a corpus and build the indices
-python run.py setup --data-dir data/
+# Ingest a corpus and build the indices (first run downloads the BGE model)
+python -c "from src.pipeline_orchestrator import EnterpriseRAGOrchestrator; \
+           print(EnterpriseRAGOrchestrator().setup(data_dir='data'))"
 
 # Ask the agentic graph, streaming node by node
 python -m src.graph.demo "why are there dispatch delays?"
