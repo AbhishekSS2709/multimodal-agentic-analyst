@@ -120,3 +120,53 @@ class MetricsResponse(BaseModel):
     total_vectors: int = 0
     visual_vectors: int = 0
     gemini_quota: Dict[str, Any] = {}
+
+
+# ---------------------------------------------------------------------------
+# v2 — LangGraph agentic analyst
+# ---------------------------------------------------------------------------
+
+class AnalystQueryRequest(BaseModel):
+    """Request body for POST /api/v2/query."""
+
+    question: str = Field(..., min_length=1, description="The question to analyse.")
+    thread_id: Optional[str] = Field(
+        None, description="Conversation thread to continue; a new one is created if omitted."
+    )
+    require_approval: bool = Field(
+        True, description="Pause for human approval before non-read-only SQL."
+    )
+
+
+class AnalystResumeRequest(BaseModel):
+    """Request body for POST /api/v2/resume."""
+
+    thread_id: str = Field(..., min_length=1, description="Thread paused at an interrupt.")
+    decision: str = Field(..., min_length=1, description="'approve' or 'reject'.")
+
+
+class AnalystResponse(BaseModel):
+    """Response body for the v2 analyst endpoints."""
+
+    answer: str = Field("", description="Final cited answer.")
+    citations: List[Dict[str, Any]] = Field(default_factory=list)
+    findings: List[Dict[str, Any]] = Field(default_factory=list)
+    verification: Dict[str, Any] = Field(default_factory=dict)
+    specialists: List[str] = Field(default_factory=list)
+    retry_count: int = Field(0, description="Synthesis attempts made.")
+    trace: List[str] = Field(default_factory=list, description="Node-by-node breadcrumbs.")
+    thread_id: str = Field("", description="Thread this run belongs to.")
+    interrupted: bool = Field(False, description="True when paused for human approval.")
+    interrupt_payload: Optional[Dict[str, Any]] = Field(
+        None, description="What the human is being asked to approve."
+    )
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+class GraphTopologyResponse(BaseModel):
+    """Response body for GET /api/v2/graph."""
+
+    mermaid: str = Field("", description="Mermaid rendering of the graph.")
+    nodes: List[str] = Field(default_factory=list)
+    llm_mode: str = Field("heuristic", description="'llm' or 'heuristic'.")
+    tracing: bool = Field(False, description="Whether LangSmith tracing is active.")

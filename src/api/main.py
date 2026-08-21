@@ -41,12 +41,16 @@ from config.settings import (
 
 from src.api.models import (
     AnalyticsResponse,
+    AnalystQueryRequest,
+    AnalystResponse,
+    AnalystResumeRequest,
     AskRequest,
     AskResponse,
     EvaluationMetric,
     EvaluationResponse,
     FeedbackRequest,
     FeedbackResponse,
+    GraphTopologyResponse,
     HealthResponse,
     SourceDocument,
     StatsResponse,
@@ -1011,3 +1015,72 @@ async def root():
     </body>
     </html>
     """
+
+
+# ---------------------------------------------------------------------------
+# v2 — LangGraph agentic analyst
+#
+# The v1 endpoints above continue to serve the original linear pipeline.
+# These add the supervisor-orchestrated multi-agent graph alongside it.
+# ---------------------------------------------------------------------------
+
+@app.get("/api/v2/graph", response_model=GraphTopologyResponse)
+async def analyst_graph_topology():
+    """Return the compiled analyst graph topology and its current mode."""
+    from src.graph.build import graph_mermaid
+    from src.graph.llm import llm_mode
+    from src.graph.observability import tracing_enabled
+
+    return GraphTopologyResponse(
+        mermaid=graph_mermaid(),
+        nodes=["supervisor", "document", "visual", "analytics", "graph",
+               "synthesizer", "verifier"],
+        llm_mode=llm_mode(),
+        tracing=tracing_enabled(),
+    )
+
+
+@app.post("/api/v2/query", response_model=AnalystResponse)
+async def analyst_query(request: AnalystQueryRequest):
+    """Run a question through the multi-agent analyst graph."""
+    from src.graph.build import run_query
+
+    question = request.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="Question must not be empty.")
+
+    try:
+        result = run_query(
+            question,
+            thread_id=request.thread_id,
+            require_approval=request.require_approval,
+        )
+    except Exception as exc:
+        logger.error("Analyst graph failed: %s\n%s", exc, traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Analyst graph failed: {exc}")
+
+    return AnalystResponse(**result)
+
+
+@app.post("/api/v2/resume", response_model=AnalystResponse)
+async def analyst_resume(request: AnalystResumeRequest):
+    """Resume a thread that paused for human approval."""
+    from src.graph.build import resume_query
+
+    decision = request.decision.strip().lower()
+    if decision not in ("approve", "approved", "yes", "y", "reject", "rejected", "no", "n"):
+        raise HTTPException(
+            status_code=400,
+            detail="Decision must be 'approve' or 'reject'.",
+        )
+
+    try:
+        result = resume_query(request.thread_id, decision)
+    except Exception as exc:
+        logger.warning("Resume failed for thread %s: %s", request.thread_id, exc)
+        raise HTTPException(
+            status_code=404,
+            detail=f"No resumable thread '{request.thread_id}': {exc}",
+        )
+
+    return AnalystResponse(**result)
