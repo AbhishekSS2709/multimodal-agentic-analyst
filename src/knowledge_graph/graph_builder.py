@@ -227,6 +227,89 @@ _RULES: List[_ExtractionRule] = [
 # KnowledgeGraphBuilder
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Structured-record extraction
+# ---------------------------------------------------------------------------
+#
+# The rules above expect prose.  The enterprise corpus is pipe-delimited
+# records -- "[ts] DISPATCH-1002 | Supplier: Apex Materials | Status: DELAYED"
+# -- so prose rules alone extracted 4 triples from 451 documents and left the
+# graph specialist with nothing to traverse.
+
+# "[2023-01-10 07:00] DISPATCH-1002 |"  ->  DISPATCH-1002
+# "[2023-03-05 16:45] MACHINE: CNC-Mill-07 |"  ->  CNC-Mill-07
+_RECORD_SUBJECT = re.compile(
+    r"^\s*(?:\[[^\]]*\]\s*)?(?:MACHINE\s*:\s*)?([A-Za-z][A-Za-z0-9\-_./]{2,40}?)\s*\|"
+)
+
+_RECORD_FIELD = re.compile(r"^\s*([A-Za-z][A-Za-z ]{1,24}?)\s*:\s*(.+?)\s*$")
+
+# Curated field -> predicate map.  Unmapped fields (ETA, Signed by, Condition,
+# timestamps) are dropped on purpose: mapping everything fills the graph with
+# junk nodes that dilute retrieval.
+_RECORD_ENTITY_FIELDS: Dict[str, str] = {
+    "supplier": "supplied_by",
+    "destination": "shipped_to",
+    "carrier": "carried_by",
+    "warehouse": "dispatched_from",
+    "location": "located_in",
+    "status": "has_status",
+    "status update": "has_status",
+    "severity": "has_severity",
+    "escalation": "escalated_to",
+}
+
+# Free-text fields: kept verbatim so the synthesizer can quote them.
+_RECORD_TEXT_FIELDS: Dict[str, str] = {
+    "reason": "delayed_because",
+    "root cause": "failed_due_to",
+    "issue": "reported_issue",
+    "notes": "note",
+    "note": "note",
+    "production impact": "impacted",
+    "items": "carries_item",
+    "total delay": "delayed_by",
+}
+
+_MAX_OBJECT_CHARS = 200
+
+
+def _extract_record_triples(text: str) -> List[Tuple[str, str, str, str, str]]:
+    """Triples from pipe-delimited log records.
+
+    Returns ``(subject, predicate, object, subject_type, object_type)``; the
+    caller attaches metadata.  Entity fields are normalised the usual way, text
+    fields are left readable.
+    """
+    out: List[Tuple[str, str, str, str, str]] = []
+    for line in text.splitlines():
+        if "|" not in line:
+            continue
+        head = _RECORD_SUBJECT.match(line)
+        if not head:
+            continue
+        subject = _normalise_entity(head.group(1))
+        if not subject:
+            continue
+        subject_type = "Machine" if "MACHINE" in line[:head.end()].upper() else "Order"
+
+        for part in line.split("|")[1:]:
+            field = _RECORD_FIELD.match(part)
+            if not field:
+                continue
+            key = field.group(1).strip().lower()
+            value = field.group(2).strip()
+            if not value or len(value) > _MAX_OBJECT_CHARS:
+                continue
+            if key in _RECORD_ENTITY_FIELDS:
+                out.append((subject, _RECORD_ENTITY_FIELDS[key],
+                            _normalise_entity(value), subject_type, "Unknown"))
+            elif key in _RECORD_TEXT_FIELDS:
+                out.append((subject, _RECORD_TEXT_FIELDS[key],
+                            value.rstrip(".,;"), subject_type, "Unknown"))
+    return out
+
+
 def _normalise_entity(name: str) -> str:
     """Normalise an entity name for consistent graph keys."""
     name = name.strip().rstrip(".,;:!?")
@@ -342,6 +425,18 @@ class KnowledgeGraphBuilder:
                 self._triples.append(triple)
                 results.append(triple.as_tuple())
                 matched_spans.append(span)
+
+        # Structured records, which the prose rules above cannot see.
+        for subj, pred, obj, subj_type, obj_type in _extract_record_triples(text):
+            triple = Triple(
+                subject=subj,
+                predicate=pred,
+                object=obj,
+                metadata={**meta, "subject_type": subj_type,
+                          "object_type": obj_type, "extractor": "record"},
+            )
+            self._triples.append(triple)
+            results.append(triple.as_tuple())
 
         logger.debug("Extracted %d triple(s) from text of length %d.", len(results), len(text))
         return results
