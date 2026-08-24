@@ -176,9 +176,9 @@ Heuristic mode, 25 cases, bge-base, no API calls:
 | Routing accuracy | 0.960 |
 | Routing precision | 0.800 |
 | Modality match | 0.800 |
-| Faithfulness | 0.762 |
-| Answer correctness | 0.698 |
-| Retry efficiency | 0.734 |
+| Faithfulness | 0.803 |
+| Answer correctness | 0.760 |
+| Retry efficiency | 0.720 |
 | Mean latency | 0.318 s |
 
 ### Heuristic vs LLM planner, 13 identical questions
@@ -202,6 +202,8 @@ guarantees `document` is always present, so it cannot make that mistake.
 | Graph specialist reads the KG | it previously never did — see below |
 | Confidence-gated intent cues | routing recall 0.720 → **0.960** |
 | Connecting the multimodal path | `modality_match` 0.200 → **0.800** |
+| Folding `-ies` onto `-y` in the stemmer | `reasoning` correctness 0.389 → **0.722** |
+| Rebuilding rather than appending the index | removed a silent 2x duplication of every chunk |
 
 Both fixes share a shape worth naming: a component with green unit tests that
 was never actually reachable. The knowledge graph was read by nothing; CLIP was

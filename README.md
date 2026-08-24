@@ -32,7 +32,7 @@ that is not a plain read pauses the graph for human approval over durable
 checkpointed state.
 
 **It runs without an API key.** Every LLM call site in `src/graph/` has a
-deterministic heuristic fallback, so the full 282-test suite runs offline — and
+deterministic heuristic fallback, so the full 305-test suite runs offline — and
 LLM-vs-heuristic becomes a measurable experiment rather than an assumption.
 (The suite is hermetic about this: `tests/conftest.py` blanks every credential,
 because otherwise it only *happened* to be offline when no key was configured.)
@@ -162,9 +162,9 @@ Heuristic mode, 25 cases, bge-base, no API calls:
 | Routing accuracy | 0.960 |
 | Routing precision | 0.800 |
 | Modality match | 0.800 |
-| Faithfulness | 0.762 |
-| Answer correctness | 0.698 |
-| Retry efficiency | 0.734 |
+| Faithfulness | 0.803 |
+| Answer correctness | 0.760 |
+| Retry efficiency | 0.720 |
 | Mean latency | 0.318 s |
 
 | Category | n | Routing | Correctness | Faithfulness | Modality |
@@ -174,9 +174,9 @@ Heuristic mode, 25 cases, bge-base, no API calls:
 | summary | 3 | 1.000 | 0.667 | 0.989 | — |
 | sql | 3 | 1.000 | 0.667 | 1.000 | — |
 | comparison | 3 | 1.000 | 0.667 | 0.978 | — |
-| reasoning | 3 | 1.000 | 0.389 | 0.626 | — |
+| reasoning | 3 | 1.000 | 0.722 | 0.959 | — |
 | visual_reasoning | 2 | 1.000 | — | 0.850 | 1.000 |
-| ocr_extraction | 1 | 1.000 | — | 0.714 | 1.000 |
+| ocr_extraction | 1 | 1.000 | — | 0.727 | 1.000 |
 | multimodal_document | 2 | 0.500 | — | 0.486 | 0.500 |
 
 The visual half needs `python scripts/make_demo_assets.py` first — `data/assets/`
@@ -200,7 +200,7 @@ abstention shares few tokens with the retrieved findings by construction.
 python -m pytest tests/ -q
 ```
 
-282 tests, ~25s, fully offline. `tests/conftest.py` blanks every credential for
+305 tests, ~47s, fully offline. `tests/conftest.py` blanks every credential for
 the session, so the suite cannot reach a live model even when `.env` holds real
 keys — before that, tests calling `run_query` issued real Gemini requests and
 wedged for 18 minutes inside retry backoff.
