@@ -29,8 +29,11 @@ logger = logging.getLogger(__name__)
 # the graph spends ~8 calls per question, so a 25-example evaluation cannot run
 # on it; Groq's free tier is far larger, which is why it is preferred when both
 # are configured.
+# gpt-oss-120b is the default because the graph needs `with_structured_output`
+# for routing, grading and verification, and the 20b variant fails it with
+# "Failed to parse tool call arguments as JSON".
 _PROVIDER_DEFAULT_MODEL: dict[str, str] = {
-    "groq": "llama-3.3-70b-versatile",
+    "groq": "openai/gpt-oss-120b",
     "google_genai": GEMINI_MODEL,
 }
 
