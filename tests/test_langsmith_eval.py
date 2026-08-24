@@ -169,5 +169,51 @@ class TestExperimentScoping(unittest.TestCase):
         from src.evaluation.langsmith_eval import build_examples, select_examples
         self.assertEqual(len(select_examples()), len(build_examples()))
 
+class TestRoutingPrecision(unittest.TestCase):
+    """routing_accuracy is recall-only, so over-routing costs nothing.
+
+    A planner that dispatches every specialist scores 1.0 on recall while doing
+    several times the work, which is exactly what the LLM planner did.
+    """
+
+    def test_exact_routing_is_perfect(self):
+        from src.evaluation.langsmith_eval import routing_precision
+        run = {"specialists": ["document", "graph"]}
+        self.assertEqual(routing_precision(run, {"specialists": ["graph"]})["score"], 1.0)
+
+    def test_spurious_specialist_is_penalised(self):
+        from src.evaluation.langsmith_eval import routing_precision
+        run = {"specialists": ["document", "analytics", "graph"]}
+        self.assertEqual(routing_precision(run, {"specialists": ["graph"]})["score"], 0.5)
+
+    def test_routing_everything_is_not_free(self):
+        from src.evaluation.langsmith_eval import routing_precision, routing_accuracy
+        run = {"specialists": ["document", "visual", "analytics", "graph"]}
+        example = {"specialists": ["graph"]}
+        self.assertEqual(routing_accuracy(run, example)["score"], 1.0)
+        self.assertLess(routing_precision(run, example)["score"], 0.5)
+
+    def test_document_floor_is_not_a_false_positive(self):
+        """`document` is always routed by design; it must not count against us."""
+        from src.evaluation.langsmith_eval import routing_precision
+        run = {"specialists": ["document"]}
+        self.assertIsNone(routing_precision(run, {"specialists": ["document"]})["score"])
+
+    def test_missing_specialist_is_recall_not_precision(self):
+        from src.evaluation.langsmith_eval import routing_precision, routing_accuracy
+        run = {"specialists": ["document"]}
+        example = {"specialists": ["graph"]}
+        self.assertEqual(routing_accuracy(run, example)["score"], 0.0)
+        self.assertIsNone(routing_precision(run, example)["score"])
+
+    def test_no_expectation_is_neutral(self):
+        from src.evaluation.langsmith_eval import routing_precision
+        self.assertIsNone(routing_precision({"specialists": ["document"]}, {})["score"])
+
+    def test_registered_in_evaluators(self):
+        from src.evaluation.langsmith_eval import EVALUATORS
+        self.assertIn("routing_precision", EVALUATORS)
+
+
 if __name__ == "__main__":
     unittest.main()

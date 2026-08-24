@@ -44,6 +44,10 @@ _CATEGORY_SPECIALISTS: Dict[str, List[str]] = {
 
 MAX_RETRIES_SCORED = 2
 
+# The supervisor always dispatches `document` as a floor, so it can never be a
+# routing mistake and must not count against routing precision.
+ROUTING_FLOOR = "document"
+
 
 def expected_specialists_for(category: str) -> List[str]:
     """Specialists a correct router should pick for ``category``."""
@@ -96,6 +100,33 @@ def routing_accuracy(run: Dict[str, Any], example: Dict[str, Any]) -> Dict[str, 
             "comment": f"expected {sorted(expected)}, got {sorted(actual)}"}
 
 
+def routing_precision(run: Dict[str, Any], example: Dict[str, Any]) -> Dict[str, Any]:
+    """Were the specialists it dispatched actually needed?
+
+    ``routing_accuracy`` is recall, so dispatching every specialist scores 1.0
+    while doing several times the work.  Measured against the LLM planner, that
+    was not hypothetical: it added ``analytics`` to every question and routed
+    2.5 specialists per query for the same recall as 1.5.
+
+    ``document`` is excluded because the supervisor routes it as a deliberate
+    floor, so it is never a planning mistake.
+    """
+    expected = set(example.get("specialists", []) or [])
+    if not expected:
+        return {"key": "routing_precision", "score": None,
+                "comment": "no routing expectation for this example"}
+    actual = set(run.get("specialists", []) or [])
+    judged = actual - {ROUTING_FLOOR}
+    if not judged:
+        return {"key": "routing_precision", "score": None,
+                "comment": "only the document floor was routed; nothing to judge"}
+    hits = len(judged & expected)
+    score = round(hits / len(judged), 3)
+    return {"key": "routing_precision", "score": score,
+            "comment": f"{hits}/{len(judged)} dispatched specialists were needed "
+                       f"({sorted(judged - expected)} spurious)"}
+
+
 def modality_match(run: Dict[str, Any], example: Dict[str, Any]) -> Dict[str, Any]:
     """Did the evidence come from the modality the question calls for?"""
     expected = example.get("modality")
@@ -139,6 +170,7 @@ EVALUATORS: Dict[str, Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]]
     "faithfulness": faithfulness,
     "citation_accuracy": citation_accuracy,
     "routing_accuracy": routing_accuracy,
+    "routing_precision": routing_precision,
     "modality_match": modality_match,
     "answer_correctness": answer_correctness,
     "retry_efficiency": retry_efficiency,
