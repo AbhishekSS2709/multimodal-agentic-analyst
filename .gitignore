@@ -1,7 +1,12 @@
 # Runtime artifact created by the LangGraph checkpointer
 data/graph_checkpoints.db
+data/graph_checkpoints.db-shm
+data/graph_checkpoints.db-wal
 
 # Local secrets — never commit. Copy .env.example to .env and fill it in.
+# The glob matters: files like "gemini key.env" and "langchain.env" were sitting
+# untracked and un-ignored, one `git add -A` away from being published.
+*.env
 .env
 .env.bak
 .env.local
