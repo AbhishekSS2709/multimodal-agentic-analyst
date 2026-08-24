@@ -67,3 +67,24 @@ class TestObservability(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestSuiteIsHermetic(unittest.TestCase):
+    """Guard: the suite must never reach a live LLM, key present or not.
+
+    Without this, the tests pass offline only because no credentials happen to
+    be configured -- and start making real API calls the moment they are.
+    """
+
+    def test_no_ambient_llm(self):
+        from src.graph.llm import llm_available, llm_mode
+        self.assertFalse(llm_available(),
+                         "a live LLM leaked into the test session")
+        self.assertEqual(llm_mode(), "heuristic")
+
+    def test_no_ambient_gemini_key(self):
+        import config.settings as settings
+        from src.graph import llm as graph_llm
+        self.assertFalse(settings.GEMINI_API_KEY)
+        self.assertFalse(graph_llm.GEMINI_API_KEY)
+        self.assertFalse(graph_llm._api_key())
