@@ -8,9 +8,38 @@ working when no API key is configured.
 
 from __future__ import annotations
 
-from typing import List
+from typing import Annotated, List, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+# Some models (qwen/qwen3.6-27b among them) emit booleans as the strings "true"
+# / "false".  Providers validate tool-call arguments against the JSON Schema we
+# send *before* returning, so a bare `bool` field makes the whole call fail with
+# "expected boolean, but got string" -- and the node then answers heuristically
+# while looking like a working LLM run.  Declaring the union widens the emitted
+# schema; the validator below narrows the value straight back to a real bool.
+LenientBool = Union[bool, str]
+
+_TRUE = {"true", "yes", "y", "1"}
+_FALSE = {"false", "no", "n", "0"}
+
+
+def _coerce_bool(value: object) -> object:
+    """Narrow a string boolean back to a real bool.
+
+    Anything unrecognised raises rather than passing through: the union would
+    otherwise keep it as a truthy string, so a garbled grade would silently read
+    as "relevant".  Raising makes the node fall back to its heuristic grader,
+    which is the safe outcome.
+    """
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in _TRUE:
+            return True
+        if text in _FALSE:
+            return False
+        raise ValueError(f"cannot interpret {value!r} as a boolean")
+    return value
 
 
 class SubTask(BaseModel):
@@ -35,9 +64,12 @@ class RoutePlan(BaseModel):
 class GradeDocuments(BaseModel):
     """Relevance grade for a single retrieved document."""
 
-    relevant: bool = Field(description="Does this document help answer the question?")
+    relevant: LenientBool = Field(
+        description="Does this document help answer the question?")
     score: float = Field(default=0.0, description="Confidence between 0 and 1.")
     reason: str = Field(default="", description="One-line justification.")
+
+    _coerce = field_validator("relevant", mode="before")(_coerce_bool)
 
 
 class RewrittenQuery(BaseModel):
@@ -50,7 +82,11 @@ class RewrittenQuery(BaseModel):
 class Verification(BaseModel):
     """Final answer grading."""
 
-    grounded: bool = Field(description="Is every claim supported by the findings?")
-    relevant: bool = Field(default=True, description="Does the answer address the question?")
+    grounded: LenientBool = Field(
+        description="Is every claim supported by the findings?")
+    relevant: LenientBool = Field(
+        default=True, description="Does the answer address the question?")
     score: float = Field(default=0.0, description="Groundedness score between 0 and 1.")
     reason: str = Field(default="", description="One-line justification.")
+
+    _coerce = field_validator("grounded", "relevant", mode="before")(_coerce_bool)
