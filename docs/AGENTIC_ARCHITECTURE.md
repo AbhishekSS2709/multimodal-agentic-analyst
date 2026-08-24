@@ -175,10 +175,11 @@ Heuristic mode, 25 cases, bge-base, no API calls:
 |---|---:|
 | Routing accuracy | 0.960 |
 | Routing precision | 0.800 |
-| Faithfulness | 0.671 |
-| Answer correctness | 0.604 |
-| Retry efficiency | 0.774 |
-| Mean latency | 0.603 s |
+| Modality match | 0.800 |
+| Faithfulness | 0.762 |
+| Answer correctness | 0.698 |
+| Retry efficiency | 0.734 |
+| Mean latency | 0.318 s |
 
 ### Heuristic vs LLM planner, 13 identical questions
 
@@ -200,6 +201,13 @@ guarantees `document` is always present, so it cannot make that mistake.
 | Record-aware KG extraction | 4 → **704 triples**; `reasoning` correctness 0.278 → 0.500 |
 | Graph specialist reads the KG | it previously never did — see below |
 | Confidence-gated intent cues | routing recall 0.720 → **0.960** |
+| Connecting the multimodal path | `modality_match` 0.200 → **0.800** |
+
+Both fixes share a shape worth naming: a component with green unit tests that
+was never actually reachable. The knowledge graph was read by nothing; CLIP was
+broken in four places at once and its tests passed because they mocked the
+model. Unit tests proved the logic while the integration was dead, and no
+amount of tuning could move the scores until the wiring was fixed.
 
 The knowledge-graph fix is the instructive one. Growing the graph from 4 to 704
 triples changed **no score at all**, because two separate bugs meant nothing

@@ -161,28 +161,30 @@ Heuristic mode, 25 cases, bge-base, no API calls:
 | Citation accuracy | 1.000 |
 | Routing accuracy | 0.960 |
 | Routing precision | 0.800 |
-| Faithfulness | 0.671 |
-| Answer correctness | 0.604 |
-| Retry efficiency | 0.774 |
-| Mean latency | 0.603 s |
+| Modality match | 0.800 |
+| Faithfulness | 0.762 |
+| Answer correctness | 0.698 |
+| Retry efficiency | 0.734 |
+| Mean latency | 0.318 s |
 
-| Category | n | Routing | Correctness | Faithfulness |
-|---|---:|---:|---:|---:|
-| factual | 3 | 1.000 | 1.000 | 0.980 |
-| edge | 5 | 1.000 | 1.000 | 0.399 |
-| summary | 3 | 1.000 | 0.667 | 0.667 |
-| sql | 3 | 1.000 | 0.500 | 1.000 |
-| reasoning | 3 | 1.000 | 0.389 | 0.626 |
-| comparison | 3 | 1.000 | 0.333 | 0.987 |
-| visual_reasoning | 2 | 1.000 | — | 0.500 |
-| ocr_extraction | 1 | 1.000 | — | 0.000 |
-| multimodal_document | 2 | 0.500 | — | 0.500 |
+| Category | n | Routing | Correctness | Faithfulness | Modality |
+|---|---:|---:|---:|---:|---:|
+| factual | 3 | 1.000 | 1.000 | 0.967 | — |
+| edge | 5 | 1.000 | 1.000 | 0.399 | — |
+| summary | 3 | 1.000 | 0.667 | 0.989 | — |
+| sql | 3 | 1.000 | 0.667 | 1.000 | — |
+| comparison | 3 | 1.000 | 0.667 | 0.978 | — |
+| reasoning | 3 | 1.000 | 0.389 | 0.626 | — |
+| visual_reasoning | 2 | 1.000 | — | 0.850 | 1.000 |
+| ocr_extraction | 1 | 1.000 | — | 0.714 | 1.000 |
+| multimodal_document | 2 | 0.500 | — | 0.486 | 0.500 |
 
-Two numbers should be read carefully rather than quoted:
+The visual half needs `python scripts/make_demo_assets.py` first — `data/assets/`
+ships empty, and with no images `modality_match` is capped at 0.200 no matter
+how good retrieval is.
 
-- **`modality_match` is 0.200 and cannot be beaten** — `data/assets/` is empty,
-  so all 490 indexed chunks are text and the five visual cases have no evidence
-  to match. It measures a missing corpus, not a broken retriever.
+One number should be read carefully rather than quoted:
+
 - **`citation_accuracy` of 1.000 is near-tautological** — citations are derived
   from findings, so it verifies plumbing, not correctness.
 
