@@ -25,6 +25,22 @@ from config.settings import GEMINI_API_KEY, GEMINI_MODEL, GEMINI_TEMPERATURE
 logger = logging.getLogger(__name__)
 
 
+# Provider defaults.  Gemini's free tier allows 20 requests/day per model and
+# the graph spends ~8 calls per question, so a 25-example evaluation cannot run
+# on it; Groq's free tier is far larger, which is why it is preferred when both
+# are configured.
+_PROVIDER_DEFAULT_MODEL: dict[str, str] = {
+    "groq": "llama-3.3-70b-versatile",
+    "google_genai": GEMINI_MODEL,
+}
+
+# Credential env var per provider, in autodetection order.
+_PROVIDER_KEYS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("groq", ("GROQ_API_KEY",)),
+    ("google_genai", ("GEMINI_API_KEY", "GOOGLE_API_KEY")),
+)
+
+
 def _api_key() -> str:
     """Resolve a Gemini key from the environment, then settings."""
     return (
@@ -33,6 +49,42 @@ def _api_key() -> str:
         or GEMINI_API_KEY
         or ""
     ).strip()
+
+
+def _provider_key(provider: str) -> str:
+    """The configured credential for ``provider``, or ``""``."""
+    if provider == "google_genai":
+        return _api_key()
+    for name, env_names in _PROVIDER_KEYS:
+        if name == provider:
+            for env_name in env_names:
+                value = (os.getenv(env_name) or "").strip()
+                if value:
+                    return value
+    return ""
+
+
+def resolve_provider() -> tuple[Optional[str], Optional[str]]:
+    """``(provider, model)`` for the configured LLM, or ``(None, None)``.
+
+    Pure resolution -- constructs nothing, so it is cheap and testable.
+    ``GRAPH_LLM_PROVIDER`` / ``GRAPH_LLM_MODEL`` override autodetection.  The
+    legacy ``LLM_PROVIDER`` setting is deliberately *not* consulted: it belongs
+    to the v1 pipeline and already carries an unrelated value.
+    """
+    override = (os.getenv("GRAPH_LLM_PROVIDER") or "").strip().lower()
+    model_override = (os.getenv("GRAPH_LLM_MODEL") or "").strip()
+
+    if override:
+        provider = override
+    else:
+        provider = next(
+            (name for name, _ in _PROVIDER_KEYS if _provider_key(name)), ""
+        )
+
+    if not provider:
+        return None, None
+    return provider, model_override or _PROVIDER_DEFAULT_MODEL.get(provider)
 
 
 @lru_cache(maxsize=8)
@@ -45,20 +97,37 @@ def get_llm(
     Cached per (temperature, model) so nodes can call this freely.  Call
     ``get_llm.cache_clear()`` after changing the environment.
     """
-    key = _api_key()
-    if not key:
+    provider, default_model = resolve_provider()
+    if provider is None or not _provider_key(provider):
         return None
-    try:
-        from langchain_google_genai import ChatGoogleGenerativeAI
 
-        return ChatGoogleGenerativeAI(
-            model=model or GEMINI_MODEL,
-            temperature=GEMINI_TEMPERATURE if temperature is None else temperature,
-            google_api_key=key,
+    temp = GEMINI_TEMPERATURE if temperature is None else temperature
+    try:
+        from langchain.chat_models import init_chat_model
+
+        chat = init_chat_model(
+            model or default_model,
+            model_provider=provider,
+            temperature=temp,
         )
-    except Exception as exc:  # missing extra, bad key shape, import error
+    except Exception as exc:  # unknown provider, missing extra, bad key shape
         logger.warning("LLM unavailable, falling back to heuristics: %s", exc)
         return None
+
+    # Free tiers are request-capped, so pace calls rather than absorb 429s.
+    rpm = (os.getenv("GRAPH_LLM_RPM") or "").strip()
+    if rpm:
+        try:
+            from langchain_core.rate_limiters import InMemoryRateLimiter
+
+            chat.rate_limiter = InMemoryRateLimiter(
+                requests_per_second=float(rpm) / 60.0,
+                check_every_n_seconds=0.5,
+                max_bucket_size=1,
+            )
+        except Exception as exc:
+            logger.warning("Rate limiter unavailable: %s", exc)
+    return chat
 
 
 def llm_available() -> bool:
