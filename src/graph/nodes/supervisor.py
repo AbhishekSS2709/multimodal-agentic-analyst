@@ -27,6 +27,41 @@ logger = logging.getLogger(__name__)
 _ANALYTICS_CATEGORIES = {"analytics", "sql"}
 _GRAPH_CATEGORIES = {"reasoning", "comparison"}
 
+# Measured on the 25-case suite, QueryRouter labels 5/25 correctly and never
+# reports more than 0.17 confidence.  Below this threshold its label is not
+# trustworthy enough to *suppress* a specialist, so intent cues taken straight
+# from the question decide instead.  Above it the label is trusted as-is.
+LOW_CONFIDENCE = 0.20
+
+# Causal / multi-hop / comparative phrasing -> the knowledge graph.
+_GRAPH_CUES = (
+    "why", "how does", "how do", "affect", "impact", "cause", "contribute",
+    "factors", "reason for", "lead to", "result in", "compare", "versus",
+    " vs ", "differ", "higher", "lower", "better", "worse", "between",
+)
+
+# Quantitative phrasing -> the SQL warehouse.
+_ANALYTICS_CUES = (
+    "how many", "how much", "total", "average", "count", "sum of", "top ",
+    "trend", "volume", "number of",
+)
+
+
+def _cue_specialists(question: str) -> List[str]:
+    """Specialists implied by the question's own wording.
+
+    Independent of ``QueryRouter`` so a wrong label cannot hide a causal or
+    quantitative question.  Deliberately narrow: every cue added here costs
+    precision, which ``routing_precision`` now measures.
+    """
+    text = f" {question.lower()} "
+    picked: List[str] = []
+    if any(cue in text for cue in _GRAPH_CUES):
+        picked.append("graph")
+    if any(cue in text for cue in _ANALYTICS_CUES):
+        picked.append("analytics")
+    return picked
+
 
 def _classify(question: str) -> Dict[str, Any]:
     """Existing keyword classifier; neutral result if it is unavailable."""
@@ -65,10 +100,12 @@ def plan_heuristic(question: str) -> RoutePlan:
 
     classification = _classify(question)
     category = str(classification.get("category", "factual")).lower()
+    confidence = float(classification.get("confidence", 0.0) or 0.0)
     modality = _modality(question)
 
     chosen: List[str] = ["document"]
-    reasons = [f"category={category}", f"modality={modality}"]
+    reasons = [f"category={category}", f"confidence={confidence:.2f}",
+               f"modality={modality}"]
 
     if category in _ANALYTICS_CATEGORIES:
         chosen.append("analytics")
@@ -76,6 +113,13 @@ def plan_heuristic(question: str) -> RoutePlan:
         chosen.append("graph")
     if modality in ("visual", "both"):
         chosen.append("visual")
+
+    # The label was a coin flip, so let the question's own wording speak.
+    if confidence < LOW_CONFIDENCE:
+        cued = _cue_specialists(question)
+        if cued:
+            chosen.extend(cued)
+            reasons.append(f"low-confidence cues={'+'.join(cued)}")
 
     # Preserve SPECIALISTS order, drop duplicates.
     ordered = [s for s in SPECIALISTS if s in set(chosen)]
