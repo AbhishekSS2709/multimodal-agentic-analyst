@@ -509,6 +509,7 @@ class EnterpriseRAGOrchestrator:
 
         if vectors:
             try:
+                store.reset()  # full rebuild, same reason as the text index
                 store.store_embeddings(vectors, metadata)
                 store.save()
             except Exception as exc:
@@ -574,6 +575,11 @@ class EnterpriseRAGOrchestrator:
             embeddings_only = [e for _, e in embedded]
 
             vs = self._get_vector_store()
+            # setup() is a full rebuild. The store loads any existing index on
+            # construction, so without this every chunk is stored a second time
+            # (490 -> 980 -> 1470) and the duplicates crowd out distinct
+            # evidence in the top-k.
+            vs.reset()
             vs.store_embeddings(chunks_only, embeddings_only)
             vs.save()
             ee.save_cache()

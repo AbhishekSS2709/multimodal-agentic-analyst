@@ -146,6 +146,22 @@ class VisualVectorStore:
     # Public API
     # ------------------------------------------------------------------
 
+
+    def reset(self) -> None:
+        """Drop every vector so a full rebuild replaces rather than appends.
+
+        ``__init__`` loads any index already on disk, so calling
+        ``store_embeddings`` during a rebuild appended a second copy of the
+        whole corpus: 490 chunks became 980, then 1470. Duplicates crowd the
+        top-k and push distinct evidence out of the results.
+
+        Appending is still the default, because incremental upload relies on it.
+        """
+        self._index = None
+        self._metadata = {}
+        self._next_id = 0
+        logger.info("Vector store reset; index will be rebuilt from scratch.")
+
     def store_embeddings(
         self,
         vectors: List[np.ndarray],
