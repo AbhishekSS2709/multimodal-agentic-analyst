@@ -32,6 +32,13 @@ from src.graph.textutil import overlap_ratio
 logger = logging.getLogger(__name__)
 
 RELEVANCE_THRESHOLD = 0.30
+
+# Grading is the graph's dominant token cost: it runs once per retrieved
+# document (TOP_K) per retrieval attempt, so up to 15 calls per question. On a
+# free tier capped at 200,000 tokens/day that alone exhausted the budget in ~13
+# questions. A relevance judgement does not need the whole passage -- the lead
+# of a chunk is enough to tell whether it is on-topic.
+GRADE_DOC_CHARS = 800
 DEFAULT_MAX_RETRIES = 2
 TOP_K = 5
 
@@ -86,7 +93,7 @@ def _grade_documents_llm(
     try:
         for doc in docs:
             grade = structured.invoke(GRADE_DOCUMENTS_PROMPT.format(
-                subtask=subtask, document=doc.page_content[:2000],
+                subtask=subtask, document=doc.page_content[:GRADE_DOC_CHARS],
             ))
             graded.append((doc, grade))
     except Exception as exc:

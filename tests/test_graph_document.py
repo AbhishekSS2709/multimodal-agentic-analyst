@@ -95,3 +95,38 @@ class TestSubgraph(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestGradingTokenBudget(unittest.TestCase):
+    """Groq's free tier is 200,000 tokens/day per model and grading dominates it.
+
+    Grading runs once per retrieved document (TOP_K=5) per retrieval attempt, so
+    the document slice sent for grading is the single largest token cost in the
+    graph. A relevance judgement does not need the whole passage.
+    """
+
+    def test_grading_slice_is_bounded(self):
+        from src.graph.nodes.document import GRADE_DOC_CHARS
+        self.assertLessEqual(GRADE_DOC_CHARS, 1000)
+        self.assertGreaterEqual(GRADE_DOC_CHARS, 300)
+
+    def test_long_document_is_truncated_before_grading(self):
+        from unittest import mock
+        from langchain_core.documents import Document
+        from src.graph.nodes import document as doc_mod
+
+        seen = {}
+
+        class _Structured:
+            def invoke(self, prompt):
+                seen["prompt"] = prompt
+                from src.graph.schemas import GradeDocuments
+                return GradeDocuments(relevant=True, score=0.9, reason="x")
+
+        long_doc = Document(page_content="A" * 5000, metadata={})
+        with mock.patch.object(doc_mod, "get_structured_llm",
+                               return_value=_Structured()):
+            doc_mod._grade_documents_llm("find the thing", [long_doc])
+
+        self.assertIn("prompt", seen)
+        self.assertLessEqual(seen["prompt"].count("A"), doc_mod.GRADE_DOC_CHARS)
