@@ -39,6 +39,12 @@ def _stem(token: str) -> str:
         for suffix in ("ing", "ed"):
             if token.endswith(suffix):
                 return token[: -len(suffix)]
+    # -ies -> -y, before the plain plural rule. Without this "deliveries"
+    # stemmed to "deliverie" while "delivery" stayed "delivery", so a question
+    # about late deliveries could not match a document about a late delivery --
+    # the grader scored 0.20 against a 0.30 threshold and the graph abstained.
+    if len(token) > 4 and token.endswith("ies"):
+        return token[:-3] + "y"
     if len(token) > 3 and token.endswith("s") and not token.endswith("ss"):
         return token[:-1]
     return token
