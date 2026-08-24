@@ -11,7 +11,7 @@ import logging
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 # ---------------------------------------------------------------------------
 # Ensure project root is on the path
@@ -94,6 +94,22 @@ class _VectorSearchAdapter:
 # ---------------------------------------------------------------------------
 # EnterpriseRAGOrchestrator
 # ---------------------------------------------------------------------------
+
+
+def collect_visual_assets(documents):
+    """Gather visual assets that rode along on document metadata.
+
+    ``IngestPipeline`` returns ``List[Document]``, so image and video loaders
+    attach their assets to ``metadata["visual_assets"]`` rather than changing
+    that contract.
+    """
+    found = []
+    for document in documents or []:
+        metadata = getattr(document, "metadata", None)
+        if isinstance(metadata, dict):
+            found.extend(metadata.get("visual_assets") or [])
+    return found
+
 
 class EnterpriseRAGOrchestrator:
     """Master orchestrator that wires all RAG components together.
@@ -455,6 +471,51 @@ class EnterpriseRAGOrchestrator:
     # Setup
     # ------------------------------------------------------------------
 
+    def _index_visual_assets(self, documents: Sequence[Any]) -> Dict[str, Any]:
+        """CLIP-embed any visual assets the ingestion produced.
+
+        Without this the visual store stays empty, so ``visual_search`` returns
+        nothing and the whole CLIP half of the system is unreachable no matter
+        what is in ``data/assets/``.
+        """
+        assets = collect_visual_assets(documents)
+        if not assets:
+            return {"assets": 0}
+        try:
+            clip = self._get_clip_engine()
+            store = self._get_visual_store()
+        except Exception as exc:
+            logger.warning("Visual indexing unavailable: %s", exc)
+            return {"assets": len(assets), "indexed": 0, "error": str(exc)}
+
+        vectors: List[Any] = []
+        metadata: List[Dict[str, Any]] = []
+        from PIL import Image
+
+        for asset in assets:
+            path = asset.get("original_path") or asset.get("path")
+            if not path:
+                continue
+            try:
+                # Re-opened here rather than carried in metadata: a live PIL
+                # handle is not msgpack serializable and would break the graph
+                # checkpointer once it reached chunk metadata.
+                with Image.open(path) as image:
+                    vectors.append(clip.embed_image(image.convert("RGB")))
+            except Exception as exc:
+                logger.warning("Could not embed %s: %s", asset.get("source"), exc)
+                continue
+            metadata.append({k: v for k, v in asset.items() if k != "image"})
+
+        if vectors:
+            try:
+                store.store_embeddings(vectors, metadata)
+                store.save()
+            except Exception as exc:
+                logger.warning("Visual store write failed: %s", exc)
+                return {"assets": len(assets), "indexed": 0, "error": str(exc)}
+        return {"assets": len(assets), "indexed": len(vectors)}
+
     def setup(self, data_dir: Optional[str] = None) -> Dict[str, Any]:
         """Run the full setup pipeline.
 
@@ -524,6 +585,15 @@ class EnterpriseRAGOrchestrator:
         except Exception as exc:
             logger.error("Embedding/storage failed: %s", exc)
             setup_report["embedding"] = {"error": str(exc)}
+
+        # -- Step 3b: Index visual assets with CLIP --------------------------
+        logger.info("Step 3b/7: Indexing visual assets ...")
+        try:
+            setup_report["visual"] = self._index_visual_assets(self._documents)
+            logger.info("  Visual assets indexed: %s", setup_report["visual"])
+        except Exception as exc:
+            logger.error("Visual indexing failed: %s", exc)
+            setup_report["visual"] = {"error": str(exc)}
 
         # -- Step 4: Build BM25 index ----------------------------------------
         logger.info("Step 4/7: Building BM25 index ...")

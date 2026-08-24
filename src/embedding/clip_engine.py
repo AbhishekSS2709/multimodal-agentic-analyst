@@ -40,6 +40,26 @@ _CLIP_CACHE_PATH: Path = VECTOR_DB_DIR / "clip_cache.npz"
 # CLIPEngine
 # ---------------------------------------------------------------------------
 
+
+def _feature_tensor(features):
+    """Return the embedding tensor from a CLIP feature call.
+
+    transformers 4.x returned a bare tensor from ``get_image_features`` /
+    ``get_text_features``; 5.x returns a ``BaseModelOutputWithPooling`` whose
+    ``pooler_output`` is the already-projected embedding. Calling ``.detach()``
+    on the 5.x object raised, so every image silently failed to embed.
+    """
+    # Ask what it *is*, not what it has: a MagicMock answers yes to every
+    # attribute, so probing for `pooler_output` first would unwrap real tensors
+    # and every mocked model in the test suite.
+    if hasattr(features, "detach"):
+        return features
+    pooled = getattr(features, "pooler_output", None)
+    if pooled is not None:
+        return pooled
+    return features
+
+
 class CLIPEngine:
     """Embed images and text into the shared CLIP latent space.
 
@@ -170,7 +190,7 @@ class CLIPEngine:
         self._ensure_model()
 
         inputs = self._processor(images=image, return_tensors="pt")
-        features = self._model.get_image_features(**inputs)
+        features = _feature_tensor(self._model.get_image_features(**inputs))
         vec = features.detach().cpu().numpy()[0].astype(np.float32)
         vec = self._normalise(vec)
 
@@ -222,7 +242,7 @@ class CLIPEngine:
         self._ensure_model()
 
         inputs = self._processor(text=[text], return_tensors="pt", padding=True)
-        features = self._model.get_text_features(**inputs)
+        features = _feature_tensor(self._model.get_text_features(**inputs))
         vec = features.detach().cpu().numpy()[0].astype(np.float32)
         vec = self._normalise(vec)
 

@@ -31,14 +31,40 @@ from .txt_loader import load_txt
 from .video_loader import load_video as _load_video_raw
 
 
+def _carry_visual_assets(result) -> List[Document]:
+    """Keep a LoaderResult's visual assets attached to its documents.
+
+    The pipeline's public contract is ``List[Document]``, so returning only
+    ``result.text_documents`` silently discarded every visual asset at the door
+    -- the visual store was never populated and CLIP retrieval had nothing to
+    search. Riding along in metadata keeps the contract intact.
+    """
+    documents = result.text_documents
+    assets = getattr(result, "visual_assets", None) or []
+    if not documents or not assets:
+        return documents
+
+    # Drop the live PIL handle. This metadata is copied into chunks and then
+    # into checkpointed graph state, where LangGraph's serialiser rejects it
+    # ("Type is not msgpack serializable"), which kills the document subgraph.
+    # `original_path` is enough to re-open the image at indexing time.
+    slim = [{k: v for k, v in asset.items() if k != "image"} for asset in assets]
+
+    if len(documents) == len(slim):
+        pairs = zip(documents, ([asset] for asset in slim))
+    else:  # e.g. many frames from one video
+        pairs = [(documents[0], slim)]
+    for document, owned in pairs:
+        document.metadata.setdefault("visual_assets", []).extend(owned)
+    return documents
+
+
 def _load_image_wrapper(file_path: str, **kwargs) -> List[Document]:
-    result = _load_image_raw(file_path, **kwargs)
-    return result.text_documents
+    return _carry_visual_assets(_load_image_raw(file_path, **kwargs))
 
 
 def _load_video_wrapper(file_path: str, **kwargs) -> List[Document]:
-    result = _load_video_raw(file_path, **kwargs)
-    return result.text_documents
+    return _carry_visual_assets(_load_video_raw(file_path, **kwargs))
 
 logger = logging.getLogger(__name__)
 
