@@ -4,7 +4,7 @@ The system has two front doors over the same retrieval stack:
 
 | | v1 — `pipeline_orchestrator.py` | v2 — `src/graph/` |
 |---|---|---|
-| Routing | keyword match, one handler | LLM planner, multiple specialists |
+| Routing | keyword match, one handler | multi-specialist planner; keyword+cues by default, LLM opt-in |
 | Retrieval | single pass | self-grading with query rewrite and retry |
 | Answering | generate | generate, then verify groundedness |
 | Safety | none | human approval before non-read-only SQL |
@@ -80,8 +80,8 @@ deterministic fallback, selected by `get_llm()` returning `None`:
 
 | Node | LLM path | Heuristic fallback |
 |---|---|---|
-| supervisor | `with_structured_output(RoutePlan)` | `QueryRouter` keywords + `QueryAnalyzer` modality |
-| grade_documents | LLM relevance grader | token overlap vs. the sub-task |
+| supervisor | `with_structured_output(RoutePlan)` | `QueryRouter` keywords + modality, plus intent cues when classifier confidence is low |
+| grade_documents | LLM relevance grader (bounded to `GRADE_DOC_CHARS`) | token overlap vs. the sub-task |
 | rewrite_query | LLM rewriter | staged expansion templates |
 | synthesizer | Gemini generation | extractive concatenation with citations |
 | verifier | LLM-as-judge | token containment of the answer in the findings |
@@ -89,6 +89,12 @@ deterministic fallback, selected by `get_llm()` returning `None`:
 This is why the whole test suite runs offline. It also makes
 LLM-vs-heuristic a measurable comparison rather than an assumption — both
 modes are stamped into LangSmith run metadata as `llm_mode`.
+
+One caveat worth stating plainly: this holds for `src/graph/`. Text-to-SQL
+inherits the v1 pipeline's `SQLAnalyticsPipeline`, which builds its own
+`GeminiClient` and ignores the provider configuration entirely, so the
+analytics specialist is *not* key-free. That was found the hard way — a run
+labelled "heuristic" spent an entire day's Gemini quota.
 
 ---
 
@@ -136,7 +142,7 @@ LANGSMITH_API_KEY=lsv2_...
 LANGSMITH_PROJECT=multimodal-agentic-analyst
 ```
 
-`src/evaluation/langsmith_eval.py` provides six evaluators as **pure
+`src/evaluation/langsmith_eval.py` provides seven evaluators as **pure
 functions**, so they run in CI with no network and are the same functions
 LangSmith calls during an experiment:
 
@@ -144,13 +150,63 @@ LangSmith calls during an experiment:
 |---|---|
 | `faithfulness` | answer claims supported by retrieved findings |
 | `citation_accuracy` | cited sources actually trace to a finding |
-| `routing_accuracy` | supervisor picked the specialists the category needs |
+| `routing_accuracy` | **recall** — did it pick the specialists the category needs |
+| `routing_precision` | **precision** — were the specialists it picked needed |
 | `modality_match` | evidence came from the expected modality |
 | `answer_correctness` | expected keywords present in the answer |
 | `retry_efficiency` | penalises runs that needed corrective retries |
 
-Routing accuracy is the notable one: the supervisor's specialist choice becomes
-a **scored prediction** rather than an untested assumption.
+Routing is the notable one: the supervisor's specialist choice becomes a
+**scored prediction** rather than an untested assumption.
+
+`routing_precision` had to be added because accuracy alone is recall, so
+dispatching every specialist scores a perfect 1.000. The LLM planner did
+exactly that — 2.5 specialists per query against the keyword planner's 1.5, for
+identical recall. `document` is excluded from precision because the supervisor
+routes it as a deliberate floor, never as a prediction.
+
+---
+
+## Measured results
+
+Heuristic mode, 25 cases, bge-base, no API calls:
+
+| Metric | Score |
+|---|---:|
+| Routing accuracy | 0.960 |
+| Routing precision | 0.800 |
+| Faithfulness | 0.671 |
+| Answer correctness | 0.604 |
+| Retry efficiency | 0.774 |
+| Mean latency | 0.603 s |
+
+### Heuristic vs LLM planner, 13 identical questions
+
+| Metric | Heuristic | LLM (`gpt-oss-safeguard-20b`) |
+|---|---:|---:|
+| Routing accuracy | **1.000** | 0.692 |
+| Routing precision | **0.778** | 0.444 |
+| Answer correctness | **0.590** | 0.551 |
+
+The deterministic planner wins on all three. The failure mode is consistent:
+the LLM **drops the `document` floor**, routing `['analytics']` alone on three
+questions and losing `graph` on an explicitly comparative one. `plan_heuristic`
+guarantees `document` is always present, so it cannot make that mistake.
+
+### What moved the numbers
+
+| Change | Effect |
+|---|---|
+| Record-aware KG extraction | 4 → **704 triples**; `reasoning` correctness 0.278 → 0.500 |
+| Graph specialist reads the KG | it previously never did — see below |
+| Confidence-gated intent cues | routing recall 0.720 → **0.960** |
+
+The knowledge-graph fix is the instructive one. Growing the graph from 4 to 704
+triples changed **no score at all**, because two separate bugs meant nothing
+read it: multi-hop retrieval (which runs on the *vector* index) returned first,
+and the fallback called `augment_retrieval(question, [])`, which returns its
+second argument unchanged when empty. The graph had never contributed to an
+answer. Only after wiring it in did the triples show up in the scores.
 
 ```python
 from src.evaluation.langsmith_eval import push_dataset, run_experiment
