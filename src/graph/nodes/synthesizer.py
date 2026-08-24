@@ -75,6 +75,22 @@ def synthesize_heuristic(
     return " ".join(parts), citations
 
 
+def _response_text(response: object) -> str:
+    """Text of a chat response, whether ``content`` is a str or a block list.
+
+    Newer Gemini models return a list of content blocks.  Calling ``.strip()``
+    on that raised, which the caller caught as "LLM unavailable" and silently
+    answered from the heuristic path instead.
+    """
+    content = getattr(response, "content", response)
+    if isinstance(content, list):
+        return "".join(
+            block.get("text", "") if isinstance(block, dict) else str(block)
+            for block in content
+        )
+    return content if isinstance(content, str) else str(content)
+
+
 def _synthesize_llm(
     question: str,
     findings: List[Finding],
@@ -88,7 +104,7 @@ def _synthesize_llm(
             question=question,
             findings=format_findings(findings),
         ))
-        answer = getattr(response, "content", str(response)).strip()
+        answer = _response_text(response).strip()
     except Exception as exc:
         logger.warning("LLM synthesis failed, falling back: %s", exc)
         return None

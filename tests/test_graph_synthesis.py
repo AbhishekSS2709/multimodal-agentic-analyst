@@ -84,6 +84,38 @@ class TestVerifier(unittest.TestCase):
         self.assertIn("verification", out)
         self.assertIn("grounded", out["verification"])
 
+class TestSynthesisContentShapes(unittest.TestCase):
+    """Newer Gemini models return ``content`` as a list of blocks, not a str."""
+
+    def _run_with_content(self, content):
+        from unittest import mock
+        from src.graph.nodes import synthesizer
+
+        response = mock.Mock()
+        response.content = content
+        llm = mock.Mock()
+        llm.invoke.return_value = response
+        with mock.patch.object(synthesizer, "get_llm", return_value=llm):
+            return synthesizer._synthesize_llm("refund window?", _findings())
+
+    def test_string_content(self):
+        result = self._run_with_content("Refunds are issued within 30 days.")
+        self.assertIsNotNone(result)
+        self.assertIn("30 days", result[0])
+
+    def test_block_list_content(self):
+        result = self._run_with_content(
+            [{"type": "text", "text": "Refunds are issued within 30 days."}])
+        self.assertIsNotNone(result, "block-style content must not fall back")
+        self.assertIn("30 days", result[0])
+
+    def test_multi_block_content_is_joined(self):
+        result = self._run_with_content(
+            [{"type": "text", "text": "Refunds are issued "},
+             {"type": "text", "text": "within 30 days."}])
+        self.assertIsNotNone(result)
+        self.assertIn("within 30 days", result[0])
+
 
 if __name__ == "__main__":
     unittest.main()
