@@ -226,8 +226,17 @@ guarantees `document` is present, so it cannot make that mistake.
 `synthesize_heuristic` is extractive by design — it stitches the top findings
 together with citation markers. On `summary`, `comparison` and `reasoning`
 questions that surfaces the right evidence and never turns it into an answer.
-Both heuristic losses are the mirror image: the LLM dropped the `document`
-floor and answered from the warehouse alone.
+
+The two losses are a different failure, and not a routing one — both were
+routed to `['document', 'analytics']`, correctly. The model **abstained**,
+answering "The findings do not contain the answer" on questions the corpus
+does answer (Apex Materials accounts for 27 of 44 delayed dispatches). That
+is our own synthesis prompt talking: it instructs the model to say so plainly
+rather than guess, and a 7.5B model takes the instruction too readily. The
+extractive arm cannot abstain, so it dumps the evidence — and because
+`answer_correctness` is keyword containment, dumping the right evidence scores
+1.000 without composing anything. Neither behaviour is straightforwardly
+better; the metric simply rewards one of them.
 
 This reverses what an earlier version of this document claimed. Two artifacts
 produced the old result, and both are now fixed:
