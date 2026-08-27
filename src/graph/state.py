@@ -63,7 +63,9 @@ class AnalystState(TypedDict):
 
     messages: Annotated[List[AnyMessage], add_messages]
     question: str
-    plan: List[SubTask]
+    # Serialised SubTasks (``{"description": ..., "specialist": ...}``) rather
+    # than the models themselves, so checkpointed state holds only plain data.
+    plan: List[Dict[str, Any]]
     specialists: List[str]
     findings: Annotated[List[Finding], operator.add]
     answer: str

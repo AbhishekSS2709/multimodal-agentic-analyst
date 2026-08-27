@@ -170,7 +170,12 @@ def supervisor_node(state: AnalystState) -> Dict[str, Any]:
     logger.info("Supervisor (%s) selected: %s", mode, specialists)
 
     return {
-        "plan": plan.subtasks,
+        # Plain dicts, not SubTask models: the plan is checkpointed, and
+        # LangGraph warns that deserialising unregistered types "will be
+        # blocked in a future version". Nothing reads the plan -- it is there
+        # for observability -- so dicts carry the same information with no
+        # custom type to register.
+        "plan": [task.model_dump() for task in plan.subtasks],
         "specialists": specialists,
         "trace": [f"supervisor:{mode}"],
     }
