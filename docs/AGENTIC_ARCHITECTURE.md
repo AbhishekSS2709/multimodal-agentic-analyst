@@ -160,16 +160,17 @@ Routing is the notable one: the supervisor's specialist choice becomes a
 **scored prediction** rather than an untested assumption.
 
 `routing_precision` had to be added because accuracy alone is recall, so
-dispatching every specialist scores a perfect 1.000 — which an early LLM
-planner did, at 2.5 specialists per query. `document` is excluded from
-precision because the supervisor routes it as a deliberate floor, never as a
-prediction.
+dispatching every specialist scores a perfect 1.000. Every LLM planner tried
+here has leaned that way — the current one averages 2.08 specialists per query
+against the heuristic's 1.60, and scores 0.364 precision for 0.820 recall.
+`document` is excluded from precision because the supervisor routes it as a
+deliberate floor, never as a prediction.
 
 ---
 
 ## Measured results
 
-Heuristic mode, 25 cases, bge-base, no API calls:
+Heuristic mode, 25 cases, bge-base, no API calls at all:
 
 | Metric | Score |
 |---|---:|
@@ -177,52 +178,84 @@ Heuristic mode, 25 cases, bge-base, no API calls:
 | Routing precision | 0.800 |
 | Modality match | 0.800 |
 | Faithfulness | 0.803 |
-| Answer correctness | 0.760 |
+| Answer correctness | 0.792 |
 | Retry efficiency | 0.720 |
-| Mean latency | 0.480 s |
+| Mean latency | 0.786 s |
 
 ### Heuristic vs LLM planner, all 25 questions
 
 Same 25 questions, same corpus, same indices, one run. The LLM arm is
-`gpt-oss-safeguard-20b` on Groq, rate-limited to 20 rpm.
+`google/gemma-4-E4B-it` on a self-hosted llama.cpp server — chosen over the
+free tiers because a 25-example run costs ~200 LLM calls, and both Gemini
+(20 requests/day) and Groq (200,000 tokens/day) exhaust before it finishes.
 
-| Metric | Heuristic | LLM (`gpt-oss-safeguard-20b`) |
+**Neither planner dominates.**
+
+| Metric | Heuristic | LLM (`gemma-4-E4B-it`) |
 |---|---:|---:|
-| Routing accuracy | **0.960** | 0.680 |
-| Routing precision | **0.800** | 0.500 |
-| Answer correctness | **0.760** | 0.667 |
-| Retry efficiency | 0.720 | 0.720 |
+| Routing accuracy | **0.960** | 0.820 |
+| Routing precision | **0.800** | 0.364 |
+| Mean latency | **0.79 s** | 43.04 s |
+| Answer correctness | 0.792 | **0.875** |
 | Modality match | 0.800 | **1.000** |
-| Mean latency | **0.48 s** | 32.31 s |
+| Retry efficiency | **0.720** | 0.680 |
 
-The deterministic planner wins on routing and correctness at 1/67th the
-latency; the LLM wins on modality match, which it gets right every time.
+The split is clean, and it is a split between *routing* and *answering*.
 
-The failure mode is consistent and it is a *recall* failure, not the
-over-dispatch an LLM planner is usually accused of: it **drops the `document`
-floor** on 5 of 25 questions, routing `['analytics']` alone on three SQL
-questions, `['analytics']` on a comparative one, and `['visual']` alone on the
-OCR case. It averages 1.28 specialists per query against the heuristic's 1.60.
-`plan_heuristic` guarantees `document` is always present, so it cannot make
-that mistake.
+**The heuristic routes better.** The LLM averages 2.08 specialists per query
+against 1.60, which is where its precision goes, and it still **drops the
+`document` floor** on 6 of 25 — routing `['analytics']` alone on three SQL
+questions and a comparative one, and `['visual']` alone on the OCR case. So it
+over-dispatches and under-dispatches at the same time. `plan_heuristic`
+guarantees `document` is present, so it cannot make that mistake.
 
-**Two caveats, both against the headline.**
+**The LLM answers better, and the gap is entirely abstractive work.** It wins
+5 examples and loses 2. Every win is a question whose answer has to be
+*composed* rather than quoted:
 
-*Faithfulness is not comparable across the arms and is left out of the table
-above.* It is measured as lexical overlap between the answer's content words
-and the findings text, and `synthesize_heuristic` is **extractive** — it quotes
-findings verbatim, so it scores near 1.000 by construction (0.803 measured).
-An abstractive LLM answer paraphrases, so it scores 0.339 for reasons that have
-nothing to do with hallucination. Reading that gap as a groundedness result
-would be wrong.
+| Question | Heuristic | LLM |
+|---|---:|---:|
+| What are the key takeaways from the last quarter? | 0.00 | **1.00** |
+| Compare supplier performance between Q3 and Q4 | 0.00 | **1.00** |
+| How does supplier reliability affect order fulfilment rates? | 0.50 | **1.00** |
+| What is the average order value by region? | 0.50 | **1.00** |
+| Why are there dispatch delays? | 0.67 | **1.00** |
+| Which supplier has the most problems? | **1.00** | 0.00 |
+| How do on-time delivery rates differ across suppliers? | **1.00** | 0.00 |
 
-*Three of the 25 LLM plans fell back to the heuristic* — Groq rejected the tool
-call on `Show monthly order trend`, the empty question and the SQL-injection
-string (`tool_use_failed`, plus one TPM 429). Those three rows are therefore
-partly heuristic. Excluding them, the LLM arm scores **0.636** routing accuracy
-and **0.455** precision against the heuristic's 0.955 / 0.786 on the same 22 —
-so the contaminated rows *helped* the LLM, and the n=25 numbers above are the
-conservative reading.
+`synthesize_heuristic` is extractive by design — it stitches the top findings
+together with citation markers. On `summary`, `comparison` and `reasoning`
+questions that surfaces the right evidence and never turns it into an answer.
+Both heuristic losses are the mirror image: the LLM dropped the `document`
+floor and answered from the warehouse alone.
+
+This reverses what an earlier version of this document claimed. Two artifacts
+produced the old result, and both are now fixed:
+
+- The evaluation **withheld the SQL warehouse from both arms**, because
+  `SQLAgent` autodetected a provider of its own and would burn the Gemini
+  budget. Every `sql` question was scored with the database switched off.
+- Every prior LLM arm **ran out of free-tier budget mid-run** and silently
+  degraded to heuristics — the Groq attempt died at example 21 of 25, and the
+  degraded tail was *improving* its routing scores.
+
+This run has neither problem: the warehouse is live in both arms, and there
+were **zero planning fallbacks** in 25 examples, so every plan scored above is
+genuinely the model's.
+
+**Two caveats.**
+
+*Faithfulness is not comparable across the arms and is left out of the table.*
+It is lexical overlap between the answer's content words and the findings text,
+and the heuristic synthesizer quotes findings verbatim, so it scores high by
+construction (0.803 against the LLM's 0.541). That gap measures abstraction,
+not hallucination — and abstraction is exactly what wins the correctness
+column above.
+
+*Three of 25 gradings fell back*, all because the model answered `"N/A"` when
+asked whether a document was relevant. That is a non-answer rather than a
+grade, so the coercion refuses it and the node grades heuristically, which is
+the safe outcome. Planning, synthesis and verification never fell back.
 
 Both arms' raw per-example scores are in
 [`eval_results_25.json`](eval_results_25.json).
