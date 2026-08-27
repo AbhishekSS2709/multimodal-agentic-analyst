@@ -130,6 +130,7 @@ class EnterpriseRAGOrchestrator:
         self._hybrid_retriever = None
         self._rag_pipeline = None
         self._sql_pipeline = None
+        self._sql_pipeline_use_llm = None
         self._query_router = None
         self._knowledge_graph_builder = None
         self._graph_retriever = None
@@ -231,11 +232,19 @@ class EnterpriseRAGOrchestrator:
             self._rag_pipeline = RAGPipeline(retriever=self._get_retriever())
         return self._rag_pipeline
 
-    def _get_sql_pipeline(self):
-        if self._sql_pipeline is None:
+    def _get_sql_pipeline(self, use_llm=None):
+        """Build the SQL analytics pipeline.
+
+        ``use_llm=None`` keeps SQLAgent's own provider autodetection, which is
+        what the v1 pipeline and the API want.  The analyst graph passes an
+        explicit flag instead, so its analytics specialist follows the same
+        LLM decision as the rest of the graph.
+        """
+        if self._sql_pipeline is None or self._sql_pipeline_use_llm != use_llm:
             try:
                 from src.sql_tool.sql_pipeline import SQLAnalyticsPipeline
-                self._sql_pipeline = SQLAnalyticsPipeline()
+                self._sql_pipeline = SQLAnalyticsPipeline(use_llm=use_llm)
+                self._sql_pipeline_use_llm = use_llm
             except Exception as exc:
                 logger.warning("SQLAnalyticsPipeline unavailable: %s", exc)
         return self._sql_pipeline

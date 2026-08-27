@@ -188,7 +188,25 @@ class LazyComponents:
 
     @property
     def sql(self) -> Optional[Any]:
-        return self._get("_get_sql_pipeline")
+        """The SQL pipeline, with its LLM mode tied to the *graph's*.
+
+        ``SQLAgent`` runs provider autodetection of its own -- Ollama, then
+        Gemini -- which is right for the v1 pipeline but wrong here.  In
+        heuristic mode the graph deliberately has no LLM, and an analytics
+        specialist that quietly called Gemini anyway would break both the
+        offline guarantee and the LLM-vs-heuristic comparison.  ``SQLAgent``
+        has a deterministic pattern-matching mode, so ``use_llm=False`` still
+        queries the warehouse -- it just writes the SQL without a model.
+        """
+        if self._orch is None:
+            return None
+        try:
+            from src.graph.llm import llm_available
+
+            return self._orch._get_sql_pipeline(use_llm=llm_available())
+        except Exception as exc:
+            logger.debug("Component _get_sql_pipeline unavailable: %s", exc)
+            return None
 
     @property
     def graph(self) -> Optional[Any]:
