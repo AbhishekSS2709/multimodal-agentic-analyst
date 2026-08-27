@@ -67,6 +67,11 @@ def _provider_key(provider: str) -> str:
     return ""
 
 
+def _base_url() -> str:
+    """A self-hosted OpenAI-compatible endpoint, if one is configured."""
+    return (os.getenv("GRAPH_LLM_BASE_URL") or "").strip()
+
+
 def resolve_provider() -> tuple[Optional[str], Optional[str]]:
     """``(provider, model)`` for the configured LLM, or ``(None, None)``.
 
@@ -80,6 +85,11 @@ def resolve_provider() -> tuple[Optional[str], Optional[str]]:
 
     if override:
         provider = override
+    elif _base_url():
+        # A self-hosted server has no daily budget, so prefer it over the
+        # metered providers. Gemini allows 20 requests/day and Groq 200,000
+        # tokens/day per model, against ~8 calls per question.
+        provider = "openai"
     else:
         provider = next(
             (name for name, _ in _PROVIDER_KEYS if _provider_key(name)), ""
@@ -101,7 +111,21 @@ def get_llm(
     ``get_llm.cache_clear()`` after changing the environment.
     """
     provider, default_model = resolve_provider()
-    if provider is None or not _provider_key(provider):
+    if provider is None:
+        return None
+
+    base_url = _base_url()
+    extra: dict = {}
+    if base_url and provider == "openai":
+        # The server names its own models, so guessing one would 404.
+        if not (model or default_model):
+            logger.warning("GRAPH_LLM_BASE_URL is set but GRAPH_LLM_MODEL is "
+                           "not; falling back to heuristics.")
+            return None
+        # A local server needs no credential, but the SDK insists on one.
+        extra = {"base_url": base_url,
+                 "api_key": os.getenv("GRAPH_LLM_API_KEY") or "not-needed"}
+    elif not _provider_key(provider):
         return None
 
     temp = GEMINI_TEMPERATURE if temperature is None else temperature
@@ -112,6 +136,7 @@ def get_llm(
             model or default_model,
             model_provider=provider,
             temperature=temp,
+            **extra,
         )
     except Exception as exc:  # unknown provider, missing extra, bad key shape
         logger.warning("LLM unavailable, falling back to heuristics: %s", exc)
