@@ -50,9 +50,13 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 # OpenAI (PAID — optional)
-LLM_MODEL = "gpt-3.5-turbo"
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
 LLM_TEMPERATURE = 0.1
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+# Any OpenAI-compatible server (llama.cpp, vLLM, Ollama's /v1, LM Studio).
+# Set this to route the "openai" provider at a self-hosted endpoint, which
+# has no per-day budget, unlike the Gemini and Groq free tiers.
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
 
 # Gemini
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")

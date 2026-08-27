@@ -26,6 +26,7 @@ from config.settings import (
     OLLAMA_BASE_URL,
     OLLAMA_MODEL,
     OPENAI_API_KEY,
+    OPENAI_BASE_URL,
 )
 
 logger = logging.getLogger(__name__)
@@ -132,10 +133,20 @@ def _call_gemini(prompt: str, system: str) -> str:
 
 
 def _call_openai(prompt: str, system: str) -> str:
-    """Call OpenAI API (paid)."""
+    """Call OpenAI, or any OpenAI-compatible server.
+
+    ``OPENAI_BASE_URL`` points this at a self-hosted endpoint (llama.cpp,
+    vLLM, LM Studio).  Such a server names its own models and needs no
+    credential, so ``LLM_MODEL`` must name one it serves and the key is a
+    placeholder the SDK insists on.
+    """
     import openai
 
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    if OPENAI_BASE_URL:
+        client = openai.OpenAI(base_url=OPENAI_BASE_URL,
+                               api_key=OPENAI_API_KEY or "not-needed")
+    else:
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
     response = client.chat.completions.create(
         model=LLM_MODEL,
         temperature=LLM_TEMPERATURE,
