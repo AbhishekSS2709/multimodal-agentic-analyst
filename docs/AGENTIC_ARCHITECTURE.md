@@ -160,10 +160,10 @@ Routing is the notable one: the supervisor's specialist choice becomes a
 **scored prediction** rather than an untested assumption.
 
 `routing_precision` had to be added because accuracy alone is recall, so
-dispatching every specialist scores a perfect 1.000. The LLM planner did
-exactly that — 2.5 specialists per query against the keyword planner's 1.5, for
-identical recall. `document` is excluded from precision because the supervisor
-routes it as a deliberate floor, never as a prediction.
+dispatching every specialist scores a perfect 1.000 — which an early LLM
+planner did, at 2.5 specialists per query. `document` is excluded from
+precision because the supervisor routes it as a deliberate floor, never as a
+prediction.
 
 ---
 
@@ -179,20 +179,53 @@ Heuristic mode, 25 cases, bge-base, no API calls:
 | Faithfulness | 0.803 |
 | Answer correctness | 0.760 |
 | Retry efficiency | 0.720 |
-| Mean latency | 0.318 s |
+| Mean latency | 0.480 s |
 
-### Heuristic vs LLM planner, 13 identical questions
+### Heuristic vs LLM planner, all 25 questions
+
+Same 25 questions, same corpus, same indices, one run. The LLM arm is
+`gpt-oss-safeguard-20b` on Groq, rate-limited to 20 rpm.
 
 | Metric | Heuristic | LLM (`gpt-oss-safeguard-20b`) |
 |---|---:|---:|
-| Routing accuracy | **1.000** | 0.692 |
-| Routing precision | **0.778** | 0.444 |
-| Answer correctness | **0.590** | 0.551 |
+| Routing accuracy | **0.960** | 0.680 |
+| Routing precision | **0.800** | 0.500 |
+| Answer correctness | **0.760** | 0.667 |
+| Retry efficiency | 0.720 | 0.720 |
+| Modality match | 0.800 | **1.000** |
+| Mean latency | **0.48 s** | 32.31 s |
 
-The deterministic planner wins on all three. The failure mode is consistent:
-the LLM **drops the `document` floor**, routing `['analytics']` alone on three
-questions and losing `graph` on an explicitly comparative one. `plan_heuristic`
-guarantees `document` is always present, so it cannot make that mistake.
+The deterministic planner wins on routing and correctness at 1/67th the
+latency; the LLM wins on modality match, which it gets right every time.
+
+The failure mode is consistent and it is a *recall* failure, not the
+over-dispatch an LLM planner is usually accused of: it **drops the `document`
+floor** on 5 of 25 questions, routing `['analytics']` alone on three SQL
+questions, `['analytics']` on a comparative one, and `['visual']` alone on the
+OCR case. It averages 1.28 specialists per query against the heuristic's 1.60.
+`plan_heuristic` guarantees `document` is always present, so it cannot make
+that mistake.
+
+**Two caveats, both against the headline.**
+
+*Faithfulness is not comparable across the arms and is left out of the table
+above.* It is measured as lexical overlap between the answer's content words
+and the findings text, and `synthesize_heuristic` is **extractive** — it quotes
+findings verbatim, so it scores near 1.000 by construction (0.803 measured).
+An abstractive LLM answer paraphrases, so it scores 0.339 for reasons that have
+nothing to do with hallucination. Reading that gap as a groundedness result
+would be wrong.
+
+*Three of the 25 LLM plans fell back to the heuristic* — Groq rejected the tool
+call on `Show monthly order trend`, the empty question and the SQL-injection
+string (`tool_use_failed`, plus one TPM 429). Those three rows are therefore
+partly heuristic. Excluding them, the LLM arm scores **0.636** routing accuracy
+and **0.455** precision against the heuristic's 0.955 / 0.786 on the same 22 —
+so the contaminated rows *helped* the LLM, and the n=25 numbers above are the
+conservative reading.
+
+Both arms' raw per-example scores are in
+[`eval_results_25.json`](eval_results_25.json).
 
 ### What moved the numbers
 

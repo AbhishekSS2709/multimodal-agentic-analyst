@@ -32,15 +32,16 @@ that is not a plain read pauses the graph for human approval over durable
 checkpointed state.
 
 **It runs without an API key.** Every LLM call site in `src/graph/` has a
-deterministic heuristic fallback, so the full 305-test suite runs offline — and
+deterministic heuristic fallback, so the full 318-test suite runs offline — and
 LLM-vs-heuristic becomes a measurable experiment rather than an assumption.
 (The suite is hermetic about this: `tests/conftest.py` blanks every credential,
 because otherwise it only *happened* to be offline when no key was configured.)
 
-**And the deterministic path measurably wins.** On 13 identical questions the
-keyword planner beat an LLM planner on routing accuracy (1.000 vs 0.692),
-routing precision (0.778 vs 0.444) and answer correctness (0.590 vs 0.551) — at
-sub-second latency and zero API cost. Numbers and method below.
+**And the deterministic path measurably wins.** On the same 25 questions the
+keyword planner beat an LLM planner on routing accuracy (0.960 vs 0.680),
+routing precision (0.800 vs 0.500) and answer correctness (0.760 vs 0.667) — at
+0.48 s per query instead of 32.3 s, and zero API cost. The LLM won one metric,
+modality match (1.000 vs 0.800). Numbers, caveats and method below.
 
 See **[docs/AGENTIC_ARCHITECTURE.md](docs/AGENTIC_ARCHITECTURE.md)** for the
 graph topology, state reducers, and evaluation design.
@@ -200,7 +201,7 @@ abstention shares few tokens with the retrieved findings by construction.
 python -m pytest tests/ -q
 ```
 
-305 tests, ~47s, fully offline. `tests/conftest.py` blanks every credential for
+318 tests, ~47s, fully offline. `tests/conftest.py` blanks every credential for
 the session, so the suite cannot reach a live model even when `.env` holds real
 keys — before that, tests calling `run_query` issued real Gemini requests and
 wedged for 18 minutes inside retry backoff.
