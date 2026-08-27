@@ -20,8 +20,11 @@ from pydantic import BaseModel, Field, field_validator
 # schema; the validator below narrows the value straight back to a real bool.
 LenientBool = Union[bool, str]
 
-_TRUE = {"true", "yes", "y", "1"}
-_FALSE = {"false", "no", "n", "0"}
+# Smaller models answer the *question* rather than filling the field: asked
+# whether a document is relevant, google/gemma-4-E4B-it returns "Not Relevant".
+# That is a perfectly clear grade, so read it rather than discarding the call.
+_TRUE = {"true", "yes", "y", "1", "relevant"}
+_FALSE = {"false", "no", "n", "0", "not relevant", "irrelevant", "not_relevant"}
 
 
 def _coerce_bool(value: object) -> object:

@@ -81,3 +81,29 @@ class TestBooleanCoercion(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestLabelStyleGrades(unittest.TestCase):
+    """Smaller models answer the question instead of filling the field.
+
+    Asked whether a document is relevant, `google/gemma-4-E4B-it` returns the
+    string "Not Relevant". That is an unambiguous grade, and discarding it sent
+    the node to its heuristic grader while the run still looked like an LLM one.
+    """
+
+    def _grade(self, value):
+        from src.graph.schemas import GradeDocuments
+        return GradeDocuments(relevant=value).relevant
+
+    def test_relevant_label_reads_as_true(self):
+        for value in ("Relevant", "relevant", " RELEVANT "):
+            self.assertIs(self._grade(value), True, value)
+
+    def test_not_relevant_label_reads_as_false(self):
+        for value in ("Not Relevant", "not relevant", "Irrelevant", "not_relevant"):
+            self.assertIs(self._grade(value), False, value)
+
+    def test_still_refuses_an_ungradeable_string(self):
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError):
+            self._grade("possibly, in some respects")
