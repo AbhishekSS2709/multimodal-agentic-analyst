@@ -11,3 +11,12 @@ data/graph_checkpoints.db-wal
 .env.bak
 .env.local
 !.env.example
+
+# Python bytecode. 49 .pyc files were tracked, so every run showed up as a diff.
+__pycache__/
+*.py[cod]
+
+# Build artifacts, rebuilt by `orchestrator.setup()` — 4.6 MB of FAISS index
+# and 62 MB of generated charts have no business in the history.
+vector_store/
+static/charts/
