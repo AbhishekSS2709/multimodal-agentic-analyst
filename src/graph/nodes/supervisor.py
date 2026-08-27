@@ -33,6 +33,10 @@ _GRAPH_CATEGORIES = {"reasoning", "comparison"}
 # from the question decide instead.  Above it the label is trusted as-is.
 LOW_CONFIDENCE = 0.20
 
+# Text retrieval is almost always worth running, and it guarantees the graph
+# never fans out to zero usable specialists.  Both planners dispatch it.
+DOCUMENT_FLOOR = "document"
+
 # Causal / multi-hop / comparative phrasing -> the knowledge graph.
 _GRAPH_CUES = (
     "why", "how does", "how do", "affect", "impact", "cause", "contribute",
@@ -103,7 +107,7 @@ def plan_heuristic(question: str) -> RoutePlan:
     confidence = float(classification.get("confidence", 0.0) or 0.0)
     modality = _modality(question)
 
-    chosen: List[str] = ["document"]
+    chosen: List[str] = [DOCUMENT_FLOOR]
     reasons = [f"category={category}", f"confidence={confidence:.2f}",
                f"modality={modality}"]
 
@@ -153,7 +157,22 @@ def _plan_llm(question: str) -> RoutePlan | None:
     if not valid:
         logger.warning("LLM plan had no valid specialists; falling back.")
         return None
-    return RoutePlan(subtasks=valid, rationale=plan.rationale)
+
+    # `document` is the floor, and `plan_heuristic` guarantees it unconditionally.
+    # The prompt asks for it too, but asking is not a guarantee: the LLM dropped
+    # it on 6 of 25 evaluation questions. Enforcing it here is what makes the
+    # invariant hold for both planners, so an LLM plan can never fan out to a
+    # single specialist that returns nothing and leave the graph with no
+    # evidence at all. `routing_precision` excludes the floor by construction,
+    # so this cannot inflate it.
+    if DOCUMENT_FLOOR not in seen:
+        valid.insert(0, SubTask(description=question, specialist=DOCUMENT_FLOOR))
+
+    ordered = {t.specialist: t for t in valid}
+    return RoutePlan(
+        subtasks=[ordered[s] for s in SPECIALISTS if s in ordered],
+        rationale=plan.rationale,
+    )
 
 
 def supervisor_node(state: AnalystState) -> Dict[str, Any]:
