@@ -250,6 +250,49 @@ the safe outcome. Planning, synthesis and verification never fell back.
 Both arms' raw per-example scores are in
 [`eval_results_25.json`](eval_results_25.json).
 
+### A second model: Qwen3.5-9B
+
+Run again with the graph on `Qwen/Qwen3.5-9B` (vLLM, port 8005) to test whether
+the remaining routing weakness was the model or the design. The SQL writer is
+held at `gemma-4-E4B-it` in both runs, so the graph's LLM is the only variable.
+
+The server dropped out for five consecutive examples (17-21, all
+`Connection error`), so those rows fell back to the heuristic planner. The
+table below is the **20 examples all three arms answered cleanly**.
+
+| Metric | Heuristic | `gemma-4-E4B` | `Qwen3.5-9B` |
+|---|---:|---:|---:|
+| Routing accuracy | **0.950** | 0.900 | 0.925 |
+| Routing precision | **0.846** | 0.383 | 0.656 |
+| Answer correctness | 0.778 | **1.000** | **1.000** |
+| Modality match | 0.750 | **1.000** | 0.750 |
+| Faithfulness | **0.904** | 0.754 | 0.659 |
+| Mean latency | **1.48 s** | 65.60 s | 52.31 s |
+
+**The routing weakness was the model, not the design.** `comparison` routing
+went 0.333 -> 0.667, and the over-dispatch that cost gemma its precision
+largely disappeared: 1.80 specialists per query against 2.52, close to the
+heuristic's 1.60, with no `visual` bolted onto text-only comparisons and no
+plan missing the `document` floor. Precision nearly doubled, 0.383 -> 0.656.
+
+**It did not fix everything.** `modality_match` fell to 0.750, where gemma was
+perfect — Qwen under-routes `visual`, which is the mirror of gemma's habit of
+over-routing it. Neither model reaches the heuristic on precision.
+
+**A reasoning model needs handling.** Qwen puts its chain of thought in
+`content`, so answers arrived as *"Thinking Process: 1. **Analyze the
+Request:**..."* and were scored as if that were the answer. It also made every
+call generate thousands of extra tokens — 3 minutes per question, against
+gemma's 68 seconds. `GRAPH_LLM_EXTRA_BODY` passes
+`{"chat_template_kwargs": {"enable_thinking": false}}` to vLLM, which fixed
+both. The graph's own nodes were never the problem: they use
+`with_structured_output`, and Qwen's tool calling worked first time. It was the
+v1 SQL agent's plain-text prompt that had nothing to constrain the reply, which
+is why the SQL writer stays on gemma.
+
+Raw scores: [`eval_results_25.json`](eval_results_25.json) (gemma) and
+[`eval_results_qwen.json`](eval_results_qwen.json).
+
 ### What moved the numbers
 
 | Change | Effect |

@@ -32,7 +32,7 @@ that is not a plain read pauses the graph for human approval over durable
 checkpointed state.
 
 **It runs without an API key.** Every LLM call site in `src/graph/` has a
-deterministic heuristic fallback, so the full 342-test suite runs offline — and
+deterministic heuristic fallback, so the full 357-test suite runs offline — and
 LLM-vs-heuristic becomes a measurable experiment rather than an assumption.
 (The suite is hermetic about this: `tests/conftest.py` blanks every credential,
 because otherwise it only *happened* to be offline when no key was configured.)
@@ -204,7 +204,7 @@ abstention shares few tokens with the retrieved findings by construction.
 python -m pytest tests/ -q
 ```
 
-342 tests, ~30s, fully offline. `tests/conftest.py` blanks every credential for
+357 tests, ~54s, fully offline. `tests/conftest.py` blanks every credential for
 the session, so the suite cannot reach a live model even when `.env` holds real
 keys — before that, tests calling `run_query` issued real Gemini requests and
 wedged for 18 minutes inside retry backoff.

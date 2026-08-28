@@ -1,0 +1,915 @@
+{
+  "heuristic": {
+    "aggregate": {
+      "faithfulness": 0.803,
+      "citation_accuracy": 1.0,
+      "routing_accuracy": 0.96,
+      "routing_precision": 0.8,
+      "modality_match": 0.8,
+      "answer_correctness": 0.792,
+      "retry_efficiency": 0.72,
+      "latency_seconds": 1.342
+    },
+    "by_category": {
+      "comparison": {
+        "n": 3,
+        "faithfulness": 0.978,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 1.0,
+        "answer_correctness": 0.667,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 0.757
+      },
+      "edge": {
+        "n": 5,
+        "faithfulness": 0.399,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 0.0,
+        "answer_correctness": 1.0,
+        "retry_efficiency": 0.867,
+        "latency_seconds": 0.674
+      },
+      "factual": {
+        "n": 3,
+        "faithfulness": 0.965,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 0.0,
+        "answer_correctness": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 2.771
+      },
+      "multimodal_document": {
+        "n": 2,
+        "faithfulness": 0.486,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 0.5,
+        "modality_match": 0.5,
+        "retry_efficiency": 0.834,
+        "latency_seconds": 0.515
+      },
+      "ocr_extraction": {
+        "n": 1,
+        "faithfulness": 0.727,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 1.0,
+        "modality_match": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 0.424
+      },
+      "reasoning": {
+        "n": 3,
+        "faithfulness": 0.959,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 1.0,
+        "answer_correctness": 0.722,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 0.669
+      },
+      "sql": {
+        "n": 3,
+        "faithfulness": 1.0,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 1.0,
+        "answer_correctness": 0.833,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 3.349
+      },
+      "summary": {
+        "n": 3,
+        "faithfulness": 0.989,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 0.0,
+        "answer_correctness": 0.667,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 1.491
+      },
+      "visual_reasoning": {
+        "n": 2,
+        "faithfulness": 0.85,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 1.0,
+        "modality_match": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 0.806
+      }
+    },
+    "examples": 25,
+    "per_example": [
+      {
+        "question": "Which supplier has the most problems?",
+        "category": "factual",
+        "scores": {
+          "faithfulness": 0.955,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 2.002
+        }
+      },
+      {
+        "question": "What is the total number of orders in the database?",
+        "category": "factual",
+        "scores": {
+          "faithfulness": 0.94,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 5.933
+        }
+      },
+      {
+        "question": "Who is the primary contact for Apex Materials?",
+        "category": "factual",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.378
+        }
+      },
+      {
+        "question": "Why are there dispatch delays?",
+        "category": "reasoning",
+        "scores": {
+          "faithfulness": 0.878,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 0.667,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.618
+        }
+      },
+      {
+        "question": "What factors contribute to late deliveries in Q4?",
+        "category": "reasoning",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.635
+        }
+      },
+      {
+        "question": "How does supplier reliability affect order fulfilment rates?",
+        "category": "reasoning",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 0.5,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.755
+        }
+      },
+      {
+        "question": "Show monthly order trend",
+        "category": "sql",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 3.259
+        }
+      },
+      {
+        "question": "What is the average order value by region?",
+        "category": "sql",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 0.5,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 3.449
+        }
+      },
+      {
+        "question": "List the top 5 suppliers by order volume",
+        "category": "sql",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 3.338
+        }
+      },
+      {
+        "question": "Summarise the overall supply chain performance",
+        "category": "summary",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 3.562
+        }
+      },
+      {
+        "question": "Give me an executive overview of logistics operations",
+        "category": "summary",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.53
+        }
+      },
+      {
+        "question": "What are the key takeaways from the last quarter?",
+        "category": "summary",
+        "scores": {
+          "faithfulness": 0.966,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": 0.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.382
+        }
+      },
+      {
+        "question": "Compare supplier performance between Q3 and Q4",
+        "category": "comparison",
+        "scores": {
+          "faithfulness": 0.958,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 0.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.739
+        }
+      },
+      {
+        "question": "Which region has higher fulfilment rates, East or West?",
+        "category": "comparison",
+        "scores": {
+          "faithfulness": 0.987,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.769
+        }
+      },
+      {
+        "question": "How do on-time delivery rates differ across suppliers?",
+        "category": "comparison",
+        "scores": {
+          "faithfulness": 0.988,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.763
+        }
+      },
+      {
+        "question": "Tell me everything",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.566
+        }
+      },
+      {
+        "question": "What about the thing with the stuff?",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 0.0,
+          "citation_accuracy": null,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": null,
+          "retry_efficiency": 1.0,
+          "latency_seconds": 0.733
+        }
+      },
+      {
+        "question": "What was the dispatch delay for Apex Materials in October, and also how does that compare with November, and what recommendations would you make?",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 0.996,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.538
+        }
+      },
+      {
+        "question": "",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 0.0,
+          "citation_accuracy": null,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": null,
+          "retry_efficiency": 1.0,
+          "latency_seconds": 0.711
+        }
+      },
+      {
+        "question": "SELECT * FROM orders; DROP TABLE orders;--",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 0.0,
+          "citation_accuracy": null,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": null,
+          "retry_efficiency": 1.0,
+          "latency_seconds": 0.823
+        }
+      },
+      {
+        "question": "What does the chart in the quarterly report show?",
+        "category": "visual_reasoning",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 1.154
+        }
+      },
+      {
+        "question": "Describe the architecture diagram",
+        "category": "visual_reasoning",
+        "scores": {
+          "faithfulness": 0.7,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.459
+        }
+      },
+      {
+        "question": "What text appears in the scanned document image?",
+        "category": "ocr_extraction",
+        "scores": {
+          "faithfulness": 0.727,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.424
+        }
+      },
+      {
+        "question": "Summarize the content from the PowerPoint presentation",
+        "category": "multimodal_document",
+        "scores": {
+          "faithfulness": 0.0,
+          "citation_accuracy": null,
+          "routing_accuracy": 0.5,
+          "routing_precision": null,
+          "modality_match": 0.0,
+          "answer_correctness": null,
+          "retry_efficiency": 1.0,
+          "latency_seconds": 0.702
+        }
+      },
+      {
+        "question": "What data is in the Excel spreadsheet?",
+        "category": "multimodal_document",
+        "scores": {
+          "faithfulness": 0.973,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 0.5,
+          "routing_precision": null,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 0.328
+        }
+      }
+    ]
+  },
+  "llm": {
+    "aggregate": {
+      "faithfulness": 0.583,
+      "citation_accuracy": 1.0,
+      "routing_accuracy": 0.94,
+      "routing_precision": 0.639,
+      "modality_match": 0.8,
+      "answer_correctness": 1.0,
+      "retry_efficiency": 0.707,
+      "latency_seconds": 49.92
+    },
+    "by_category": {
+      "comparison": {
+        "n": 3,
+        "faithfulness": 0.841,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 0.667,
+        "routing_precision": 0.5,
+        "answer_correctness": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 57.181
+      },
+      "edge": {
+        "n": 5,
+        "faithfulness": 0.361,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 0.0,
+        "answer_correctness": 1.0,
+        "retry_efficiency": 0.867,
+        "latency_seconds": 47.893
+      },
+      "factual": {
+        "n": 3,
+        "faithfulness": 0.706,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 0.0,
+        "answer_correctness": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 44.958
+      },
+      "multimodal_document": {
+        "n": 2,
+        "faithfulness": 0.688,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 0.75,
+        "routing_precision": 1.0,
+        "modality_match": 0.5,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 40.669
+      },
+      "ocr_extraction": {
+        "n": 1,
+        "faithfulness": 0.296,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 1.0,
+        "modality_match": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 69.67
+      },
+      "reasoning": {
+        "n": 3,
+        "faithfulness": 0.538,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 1.0,
+        "answer_correctness": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 45.236
+      },
+      "sql": {
+        "n": 3,
+        "faithfulness": 0.648,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 1.0,
+        "answer_correctness": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 62.798
+      },
+      "summary": {
+        "n": 3,
+        "faithfulness": 0.776,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 0.0,
+        "answer_correctness": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 56.805
+      },
+      "visual_reasoning": {
+        "n": 2,
+        "faithfulness": 0.287,
+        "citation_accuracy": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 1.0,
+        "modality_match": 1.0,
+        "retry_efficiency": 0.667,
+        "latency_seconds": 28.297
+      }
+    },
+    "examples": 25,
+    "per_example": [
+      {
+        "question": "Which supplier has the most problems?",
+        "category": "factual",
+        "scores": {
+          "faithfulness": 0.75,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 44.636
+        }
+      },
+      {
+        "question": "What is the total number of orders in the database?",
+        "category": "factual",
+        "scores": {
+          "faithfulness": 0.667,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 63.91
+        }
+      },
+      {
+        "question": "Who is the primary contact for Apex Materials?",
+        "category": "factual",
+        "scores": {
+          "faithfulness": 0.7,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 26.328
+        }
+      },
+      {
+        "question": "Why are there dispatch delays?",
+        "category": "reasoning",
+        "scores": {
+          "faithfulness": 0.629,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 34.686
+        }
+      },
+      {
+        "question": "What factors contribute to late deliveries in Q4?",
+        "category": "reasoning",
+        "scores": {
+          "faithfulness": 0.581,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 38.73
+        }
+      },
+      {
+        "question": "How does supplier reliability affect order fulfilment rates?",
+        "category": "reasoning",
+        "scores": {
+          "faithfulness": 0.405,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 62.293
+        }
+      },
+      {
+        "question": "Show monthly order trend",
+        "category": "sql",
+        "scores": {
+          "faithfulness": 0.818,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 73.638
+        }
+      },
+      {
+        "question": "What is the average order value by region?",
+        "category": "sql",
+        "scores": {
+          "faithfulness": 0.706,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 68.218
+        }
+      },
+      {
+        "question": "List the top 5 suppliers by order volume",
+        "category": "sql",
+        "scores": {
+          "faithfulness": 0.419,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 46.539
+        }
+      },
+      {
+        "question": "Summarise the overall supply chain performance",
+        "category": "summary",
+        "scores": {
+          "faithfulness": 0.707,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 71.368
+        }
+      },
+      {
+        "question": "Give me an executive overview of logistics operations",
+        "category": "summary",
+        "scores": {
+          "faithfulness": 0.719,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 71.478
+        }
+      },
+      {
+        "question": "What are the key takeaways from the last quarter?",
+        "category": "summary",
+        "scores": {
+          "faithfulness": 0.903,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 27.568
+        }
+      },
+      {
+        "question": "Compare supplier performance between Q3 and Q4",
+        "category": "comparison",
+        "scores": {
+          "faithfulness": 0.774,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.5,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 76.908
+        }
+      },
+      {
+        "question": "Which region has higher fulfilment rates, East or West?",
+        "category": "comparison",
+        "scores": {
+          "faithfulness": 1.0,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 0.0,
+          "routing_precision": 0.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 44.689
+        }
+      },
+      {
+        "question": "How do on-time delivery rates differ across suppliers?",
+        "category": "comparison",
+        "scores": {
+          "faithfulness": 0.75,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 49.946
+        }
+      },
+      {
+        "question": "Tell me everything",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 0.807,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 69.116
+        }
+      },
+      {
+        "question": "What about the thing with the stuff?",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 0.0,
+          "citation_accuracy": null,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": null,
+          "retry_efficiency": 1.0,
+          "latency_seconds": 46.797
+        }
+      },
+      {
+        "question": "What was the dispatch delay for Apex Materials in October, and also how does that compare with November, and what recommendations would you make?",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 0.996,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.0,
+          "modality_match": null,
+          "answer_correctness": 1.0,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 31.018
+        }
+      },
+      {
+        "question": "",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 0.0,
+          "citation_accuracy": null,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": null,
+          "retry_efficiency": 1.0,
+          "latency_seconds": 46.477
+        }
+      },
+      {
+        "question": "SELECT * FROM orders; DROP TABLE orders;--",
+        "category": "edge",
+        "scores": {
+          "faithfulness": 0.0,
+          "citation_accuracy": null,
+          "routing_accuracy": 1.0,
+          "routing_precision": null,
+          "modality_match": null,
+          "answer_correctness": null,
+          "retry_efficiency": 1.0,
+          "latency_seconds": 46.058
+        }
+      },
+      {
+        "question": "What does the chart in the quarterly report show?",
+        "category": "visual_reasoning",
+        "scores": {
+          "faithfulness": 0.406,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 31.379
+        }
+      },
+      {
+        "question": "Describe the architecture diagram",
+        "category": "visual_reasoning",
+        "scores": {
+          "faithfulness": 0.167,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 25.215
+        }
+      },
+      {
+        "question": "What text appears in the scanned document image?",
+        "category": "ocr_extraction",
+        "scores": {
+          "faithfulness": 0.296,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 69.67
+        }
+      },
+      {
+        "question": "Summarize the content from the PowerPoint presentation",
+        "category": "multimodal_document",
+        "scores": {
+          "faithfulness": 0.585,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 50.525
+        }
+      },
+      {
+        "question": "What data is in the Excel spreadsheet?",
+        "category": "multimodal_document",
+        "scores": {
+          "faithfulness": 0.791,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 0.5,
+          "routing_precision": null,
+          "modality_match": 0.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 30.814
+        }
+      }
+    ]
+  }
+}
