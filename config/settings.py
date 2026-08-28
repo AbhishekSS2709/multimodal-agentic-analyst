@@ -58,6 +58,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 # has no per-day budget, unlike the Gemini and Groq free tiers.
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
 
+# An OpenAI-compatible /v1/embeddings endpoint.  Set this to embed on a server
+# instead of loading sentence-transformers locally -- the model weights plus the
+# torch runtime are the largest local memory cost in the whole pipeline, and
+# unlike the LLM they cannot be avoided by falling back to heuristics.
+EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "")
+
 # Gemini
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_JUDGE_MODEL = os.getenv("GEMINI_JUDGE_MODEL", "gemini-2.5-pro")

@@ -7,8 +7,10 @@ Includes an in-memory + optional on-disk cache to avoid redundant computation.
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import sys
+import urllib.request
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -18,7 +20,12 @@ import numpy as np
 # Configuration imports
 # ---------------------------------------------------------------------------
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from config.settings import EMBEDDING_DIMENSION, EMBEDDING_MODEL, VECTOR_DB_DIR
+from config.settings import (
+    EMBEDDING_BASE_URL,
+    EMBEDDING_DIMENSION,
+    EMBEDDING_MODEL,
+    VECTOR_DB_DIR,
+)
 
 from src.chunking.chunker import Chunk
 
@@ -55,12 +62,19 @@ class EmbeddingEngine:
         dimension: int = EMBEDDING_DIMENSION,
         batch_size: int = 32,
         device: Optional[str] = None,
+        base_url: Optional[str] = None,
+        timeout: float = 120.0,
     ) -> None:
         self.model_name = model_name
         self.dimension = dimension
         self.batch_size = batch_size
         self._model = None
         self._device = device
+        # When set, embedding happens on a server and nothing is loaded here.
+        self.base_url = (
+            EMBEDDING_BASE_URL if base_url is None else base_url
+        ).strip().rstrip("/")
+        self.timeout = timeout
 
         # In-memory cache: content hash -> embedding vector
         self._cache: Dict[str, np.ndarray] = {}
@@ -80,8 +94,13 @@ class EmbeddingEngine:
     # ------------------------------------------------------------------
 
     def _ensure_model(self) -> None:
-        """Load the sentence-transformer model on first use."""
-        if self._model is not None:
+        """Load the sentence-transformer model on first use.
+
+        A no-op when embedding remotely -- that is the whole point of the
+        remote path, since the weights and the torch runtime are what cost
+        memory locally.
+        """
+        if self.base_url or self._model is not None:
             return
         try:
             from sentence_transformers import SentenceTransformer
@@ -209,8 +228,40 @@ class EmbeddingEngine:
     # Internal
     # ------------------------------------------------------------------
 
+    def _remote_encode(self, texts: List[str]) -> np.ndarray:
+        """Encode *texts* via an OpenAI-compatible ``/v1/embeddings`` endpoint."""
+        all_embeddings: List[np.ndarray] = []
+        for start in range(0, len(texts), self.batch_size):
+            batch = texts[start : start + self.batch_size]
+            payload = json.dumps(
+                {"model": self.model_name, "input": batch}
+            ).encode("utf-8")
+            request = urllib.request.Request(
+                f"{self.base_url}/embeddings",
+                data=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                body = json.loads(response.read())
+            # The spec does not promise response order, and a reordered batch
+            # would silently attach every vector to the wrong chunk.
+            rows = sorted(body["data"], key=lambda row: row.get("index", 0))
+            all_embeddings.append(
+                np.asarray([row["embedding"] for row in rows], dtype=np.float32)
+            )
+        matrix = np.vstack(all_embeddings).astype(np.float32)
+        if matrix.shape[1] != self.dimension:
+            raise ValueError(
+                f"{self.base_url} returned {matrix.shape[1]}-dim vectors but "
+                f"EMBEDDING_DIMENSION is {self.dimension}; the index would be "
+                f"unusable."
+            )
+        return matrix
+
     def _batch_encode(self, texts: List[str]) -> np.ndarray:
         """Encode *texts* in batches and return the raw numpy matrix."""
+        if self.base_url:
+            return self._remote_encode(texts)
         all_embeddings: List[np.ndarray] = []
         for start in range(0, len(texts), self.batch_size):
             batch = texts[start : start + self.batch_size]
