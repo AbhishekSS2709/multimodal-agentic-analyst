@@ -9,6 +9,7 @@ measure as a LangSmith experiment rather than assume.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
@@ -72,6 +73,29 @@ def _base_url() -> str:
     return (os.getenv("GRAPH_LLM_BASE_URL") or "").strip()
 
 
+def _extra_body() -> dict:
+    """Provider-specific request fields, as JSON in ``GRAPH_LLM_EXTRA_BODY``.
+
+    Reasoning models put their chain of thought in ``content``, which lands
+    verbatim in synthesised answers and is then scored as if it were the
+    answer.  Qwen3.5 on vLLM turns it off with
+    ``{"chat_template_kwargs": {"enable_thinking": false}}``; other servers
+    spell it differently, so this stays a pass-through rather than a flag.
+    """
+    raw = (os.getenv("GRAPH_LLM_EXTRA_BODY") or "").strip()
+    if not raw:
+        return {}
+    try:
+        body = json.loads(raw)
+    except ValueError as exc:
+        logger.warning("GRAPH_LLM_EXTRA_BODY is not valid JSON, ignoring: %s", exc)
+        return {}
+    if not isinstance(body, dict):
+        logger.warning("GRAPH_LLM_EXTRA_BODY must be a JSON object, ignoring.")
+        return {}
+    return body
+
+
 def resolve_provider() -> tuple[Optional[str], Optional[str]]:
     """``(provider, model)`` for the configured LLM, or ``(None, None)``.
 
@@ -125,6 +149,9 @@ def get_llm(
         # A local server needs no credential, but the SDK insists on one.
         extra = {"base_url": base_url,
                  "api_key": os.getenv("GRAPH_LLM_API_KEY") or "not-needed"}
+        body = _extra_body()
+        if body:
+            extra["extra_body"] = body
     elif not _provider_key(provider):
         return None
 
