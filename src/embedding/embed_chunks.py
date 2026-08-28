@@ -10,6 +10,7 @@ import hashlib
 import json
 import logging
 import sys
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -22,6 +23,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config.settings import (
     EMBEDDING_BASE_URL,
+    EMBEDDING_MAX_CHARS,
     EMBEDDING_DIMENSION,
     EMBEDDING_MODEL,
     VECTOR_DB_DIR,
@@ -64,6 +66,7 @@ class EmbeddingEngine:
         device: Optional[str] = None,
         base_url: Optional[str] = None,
         timeout: float = 120.0,
+        max_chars: Optional[int] = None,
     ) -> None:
         self.model_name = model_name
         self.dimension = dimension
@@ -75,6 +78,7 @@ class EmbeddingEngine:
             EMBEDDING_BASE_URL if base_url is None else base_url
         ).strip().rstrip("/")
         self.timeout = timeout
+        self.max_chars = max_chars if max_chars is not None else EMBEDDING_MAX_CHARS
 
         # In-memory cache: content hash -> embedding vector
         self._cache: Dict[str, np.ndarray] = {}
@@ -228,21 +232,50 @@ class EmbeddingEngine:
     # Internal
     # ------------------------------------------------------------------
 
-    def _remote_encode(self, texts: List[str]) -> np.ndarray:
-        """Encode *texts* via an OpenAI-compatible ``/v1/embeddings`` endpoint."""
-        all_embeddings: List[np.ndarray] = []
-        for start in range(0, len(texts), self.batch_size):
-            batch = texts[start : start + self.batch_size]
+    def _post_batch(self, batch: List[str], attempts: int = 4) -> dict:
+        """POST one batch, shrinking the truncation limit if it overflows.
+
+        A character limit cannot be exact without the server's tokenizer, and
+        the ratio varies by corpus -- prose runs ~5 chars/token, dense records
+        ~2.5.  Rather than fail the whole index on a bad guess, halve and retry.
+        """
+        limit = self.max_chars
+        for attempt in range(attempts):
             payload = json.dumps(
-                {"model": self.model_name, "input": batch}
+                {"model": self.model_name, "input": [t[:limit] for t in batch]}
             ).encode("utf-8")
             request = urllib.request.Request(
                 f"{self.base_url}/embeddings",
                 data=payload,
                 headers={"Content-Type": "application/json"},
             )
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                body = json.loads(response.read())
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                    return json.loads(response.read())
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")
+                if exc.code != 400 or "context" not in detail or attempt == attempts - 1:
+                    raise RuntimeError(
+                        f"{self.base_url}/embeddings returned {exc.code}: {detail[:200]}"
+                    ) from exc
+                limit //= 2
+                logger.warning(
+                    "Embedding server reports a context overflow; retrying this "
+                    "batch truncated to %d characters.", limit
+                )
+        raise RuntimeError("unreachable")
+
+    def _remote_encode(self, texts: List[str]) -> np.ndarray:
+        """Encode *texts* via an OpenAI-compatible ``/v1/embeddings`` endpoint."""
+        all_embeddings: List[np.ndarray] = []
+        for start in range(0, len(texts), self.batch_size):
+            raw_batch = texts[start : start + self.batch_size]
+            # bge accepts 512 tokens.  The local model truncates past that
+            # silently; the server returns HTTP 400 for the *whole request*
+            # instead, so one long chunk would lose the 31 batched with it.
+            # How many characters fit is corpus-dependent, so back off rather
+            # than trust a single guess.
+            body = self._post_batch(raw_batch)
             # The spec does not promise response order, and a reordered batch
             # would silently attach every vector to the wrong chunk.
             rows = sorted(body["data"], key=lambda row: row.get("index", 0))

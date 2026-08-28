@@ -115,3 +115,57 @@ class TestLocalPathUnchanged(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestContextOverflowBackoff(unittest.TestCase):
+    """A character budget cannot be exact without the server's tokenizer.
+
+    bge accepts 512 tokens. Prose runs ~5 chars/token, but the pipe-delimited
+    records in this corpus run ~2.5 -- 1716 characters came to 677 tokens. The
+    server rejects the *whole request* with HTTP 400 rather than truncating, so
+    one long chunk would take out the 31 batched alongside it and fail the
+    entire index build. Halve and retry rather than fail on a bad guess.
+    """
+
+    def _overflow(self):
+        import urllib.error
+        return urllib.error.HTTPError(
+            "u", 400, "Bad Request", {},
+            __import__("io").BytesIO(json.dumps({"error": {
+                "code": 400, "type": "exceed_context_size_error",
+                "message": "input (677 tokens) is larger than the max context size (512 tokens)"
+            }}).encode()))
+
+    def test_it_retries_with_a_halved_limit(self):
+        engine = _engine(max_chars=1200)
+        with mock.patch("urllib.request.urlopen",
+                        side_effect=[self._overflow(),
+                                     _response([[1.0] * DIM])]) as urlopen:
+            out = engine._batch_encode(["x" * 5000])
+        self.assertEqual(urlopen.call_count, 2)
+        second = json.loads(urlopen.call_args_list[1].args[0].data)
+        self.assertEqual(len(second["input"][0]), 600)
+        self.assertEqual(out.shape, (1, DIM))
+
+    def test_it_gives_up_rather_than_looping_forever(self):
+        engine = _engine(max_chars=1200)
+        with mock.patch("urllib.request.urlopen",
+                        side_effect=[self._overflow() for _ in range(6)]):
+            with self.assertRaises(RuntimeError):
+                engine._batch_encode(["x" * 5000])
+
+    def test_a_non_context_error_is_not_retried(self):
+        """Only overflow is recoverable by truncating; 500s are not."""
+        import io
+        import urllib.error
+        boom = urllib.error.HTTPError("u", 500, "err", {}, io.BytesIO(b"upstream died"))
+        engine = _engine()
+        with mock.patch("urllib.request.urlopen", side_effect=[boom]) as urlopen:
+            with self.assertRaises(RuntimeError) as ctx:
+                engine._batch_encode(["a"])
+        self.assertEqual(urlopen.call_count, 1)
+        self.assertIn("500", str(ctx.exception))
+
+    def test_the_default_limit_is_conservative_for_dense_text(self):
+        from config.settings import EMBEDDING_MAX_CHARS
+        self.assertLessEqual(EMBEDDING_MAX_CHARS, 1200)

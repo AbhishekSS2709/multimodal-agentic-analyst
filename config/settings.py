@@ -64,6 +64,18 @@ OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "")
 # unlike the LLM they cannot be avoided by falling back to heuristics.
 EMBEDDING_BASE_URL = os.getenv("EMBEDDING_BASE_URL", "")
 
+# bge accepts 512 tokens.  sentence-transformers truncates past that silently;
+# a llama.cpp server rejects the whole request with HTTP 400 instead, which
+# takes out every other text batched alongside it.  Truncating before sending
+# reproduces the local behaviour rather than changing it.
+#
+# The limit is in characters because that is what we can measure without a
+# tokenizer, and the ratio is corpus-dependent: prose runs ~5 chars/token, but
+# the pipe-delimited records here run ~2.5, so 1716 characters came to 677
+# tokens.  1200 is conservative for dense text, and the encoder halves it and
+# retries if a server still reports an overflow.
+EMBEDDING_MAX_CHARS = int(os.getenv("EMBEDDING_MAX_CHARS", "1200"))
+
 # Gemini
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 GEMINI_JUDGE_MODEL = os.getenv("GEMINI_JUDGE_MODEL", "gemini-2.5-pro")
