@@ -32,18 +32,19 @@ that is not a plain read pauses the graph for human approval over durable
 checkpointed state.
 
 **It runs without an API key.** Every LLM call site in `src/graph/` has a
-deterministic heuristic fallback, so the full 333-test suite runs offline — and
+deterministic heuristic fallback, so the full 342-test suite runs offline — and
 LLM-vs-heuristic becomes a measurable experiment rather than an assumption.
 (The suite is hermetic about this: `tests/conftest.py` blanks every credential,
 because otherwise it only *happened* to be offline when no key was configured.)
 
 **And the two paths split cleanly.** On the same 25 questions the keyword
-planner routes better — accuracy 0.960 vs 0.820, precision 0.800 vs 0.364, at
-0.79 s per query instead of 43 s and zero API cost — while the LLM *answers*
-better, correctness 0.875 vs 0.792 and modality match 1.000 vs 0.800. Every
-question the LLM wins is one whose answer has to be composed rather than
-quoted, which is precisely what an extractive synthesizer cannot do. Numbers,
-caveats and method below.
+planner routes more precisely — accuracy 0.960 vs 0.920, precision 0.800 vs
+0.377, at 1.5 s per query and zero API cost — while the LLM *answers* better,
+correctness 1.000 vs 0.792 and modality match 1.000 vs 0.800. Every question
+the LLM wins is one whose answer has to be composed rather than quoted, which
+is precisely what an extractive synthesizer cannot do. Numbers, caveats and
+method below — including why that 1.000 is a ceiling on a proxy metric rather
+than a solved problem.
 
 See **[docs/AGENTIC_ARCHITECTURE.md](docs/AGENTIC_ARCHITECTURE.md)** for the
 graph topology, state reducers, and evaluation design.
@@ -203,7 +204,7 @@ abstention shares few tokens with the retrieved findings by construction.
 python -m pytest tests/ -q
 ```
 
-333 tests, ~24s, fully offline. `tests/conftest.py` blanks every credential for
+342 tests, ~30s, fully offline. `tests/conftest.py` blanks every credential for
 the session, so the suite cannot reach a live model even when `.env` holds real
 keys — before that, tests calling `run_query` issued real Gemini requests and
 wedged for 18 minutes inside retry backoff.

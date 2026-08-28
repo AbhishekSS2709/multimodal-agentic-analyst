@@ -8,7 +8,7 @@
       "modality_match": 0.8,
       "answer_correctness": 0.792,
       "retry_efficiency": 0.72,
-      "latency_seconds": 0.786
+      "latency_seconds": 1.532
     },
     "by_category": {
       "comparison": {
@@ -19,7 +19,7 @@
         "routing_precision": 1.0,
         "answer_correctness": 0.667,
         "retry_efficiency": 0.667,
-        "latency_seconds": 0.346
+        "latency_seconds": 0.888
       },
       "edge": {
         "n": 5,
@@ -29,7 +29,7 @@
         "routing_precision": 0.0,
         "answer_correctness": 1.0,
         "retry_efficiency": 0.867,
-        "latency_seconds": 0.276
+        "latency_seconds": 0.758
       },
       "factual": {
         "n": 3,
@@ -39,7 +39,7 @@
         "routing_precision": 0.0,
         "answer_correctness": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 1.786
+        "latency_seconds": 3.266
       },
       "multimodal_document": {
         "n": 2,
@@ -48,7 +48,7 @@
         "routing_accuracy": 0.5,
         "modality_match": 0.5,
         "retry_efficiency": 0.834,
-        "latency_seconds": 0.281
+        "latency_seconds": 0.756
       },
       "ocr_extraction": {
         "n": 1,
@@ -58,7 +58,7 @@
         "routing_precision": 1.0,
         "modality_match": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 0.243
+        "latency_seconds": 0.626
       },
       "reasoning": {
         "n": 3,
@@ -68,7 +68,7 @@
         "routing_precision": 1.0,
         "answer_correctness": 0.722,
         "retry_efficiency": 0.667,
-        "latency_seconds": 0.356
+        "latency_seconds": 0.862
       },
       "sql": {
         "n": 3,
@@ -78,7 +78,7 @@
         "routing_precision": 1.0,
         "answer_correctness": 0.833,
         "retry_efficiency": 0.667,
-        "latency_seconds": 2.063
+        "latency_seconds": 3.459
       },
       "summary": {
         "n": 3,
@@ -88,7 +88,7 @@
         "routing_precision": 0.0,
         "answer_correctness": 0.667,
         "retry_efficiency": 0.667,
-        "latency_seconds": 0.911
+        "latency_seconds": 1.561
       },
       "visual_reasoning": {
         "n": 2,
@@ -98,7 +98,7 @@
         "routing_precision": 1.0,
         "modality_match": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 0.537
+        "latency_seconds": 1.134
       }
     },
     "examples": 25,
@@ -114,7 +114,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 1.403
+          "latency_seconds": 2.651
         }
       },
       {
@@ -128,7 +128,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 3.755
+          "latency_seconds": 6.674
         }
       },
       {
@@ -142,7 +142,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.2
+          "latency_seconds": 0.474
         }
       },
       {
@@ -156,7 +156,7 @@
           "modality_match": null,
           "answer_correctness": 0.667,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.331
+          "latency_seconds": 0.837
         }
       },
       {
@@ -170,7 +170,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.325
+          "latency_seconds": 0.904
         }
       },
       {
@@ -184,7 +184,7 @@
           "modality_match": null,
           "answer_correctness": 0.5,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.413
+          "latency_seconds": 0.844
         }
       },
       {
@@ -198,7 +198,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 2.231
+          "latency_seconds": 3.565
         }
       },
       {
@@ -212,7 +212,7 @@
           "modality_match": null,
           "answer_correctness": 0.5,
           "retry_efficiency": 0.667,
-          "latency_seconds": 1.995
+          "latency_seconds": 3.106
         }
       },
       {
@@ -226,7 +226,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 1.964
+          "latency_seconds": 3.706
         }
       },
       {
@@ -240,7 +240,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 2.243
+          "latency_seconds": 3.264
         }
       },
       {
@@ -254,7 +254,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.344
+          "latency_seconds": 1.022
         }
       },
       {
@@ -268,7 +268,7 @@
           "modality_match": null,
           "answer_correctness": 0.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.146
+          "latency_seconds": 0.398
         }
       },
       {
@@ -282,7 +282,7 @@
           "modality_match": null,
           "answer_correctness": 0.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.306
+          "latency_seconds": 0.856
         }
       },
       {
@@ -296,7 +296,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.356
+          "latency_seconds": 0.967
         }
       },
       {
@@ -310,7 +310,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.375
+          "latency_seconds": 0.842
         }
       },
       {
@@ -324,7 +324,7 @@
           "modality_match": null,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.26
+          "latency_seconds": 0.609
         }
       },
       {
@@ -338,7 +338,7 @@
           "modality_match": null,
           "answer_correctness": null,
           "retry_efficiency": 1.0,
-          "latency_seconds": 0.257
+          "latency_seconds": 0.773
         }
       },
       {
@@ -352,7 +352,7 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.304
+          "latency_seconds": 0.805
         }
       },
       {
@@ -366,7 +366,7 @@
           "modality_match": null,
           "answer_correctness": null,
           "retry_efficiency": 1.0,
-          "latency_seconds": 0.279
+          "latency_seconds": 0.776
         }
       },
       {
@@ -380,7 +380,7 @@
           "modality_match": null,
           "answer_correctness": null,
           "retry_efficiency": 1.0,
-          "latency_seconds": 0.279
+          "latency_seconds": 0.825
         }
       },
       {
@@ -394,7 +394,7 @@
           "modality_match": 1.0,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.779
+          "latency_seconds": 1.669
         }
       },
       {
@@ -408,7 +408,7 @@
           "modality_match": 1.0,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.296
+          "latency_seconds": 0.599
         }
       },
       {
@@ -422,7 +422,7 @@
           "modality_match": 1.0,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.243
+          "latency_seconds": 0.626
         }
       },
       {
@@ -436,7 +436,7 @@
           "modality_match": 0.0,
           "answer_correctness": null,
           "retry_efficiency": 1.0,
-          "latency_seconds": 0.377
+          "latency_seconds": 0.838
         }
       },
       {
@@ -450,112 +450,112 @@
           "modality_match": 1.0,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 0.185
+          "latency_seconds": 0.674
         }
       }
     ]
   },
   "llm": {
     "aggregate": {
-      "faithfulness": 0.541,
+      "faithfulness": 0.666,
       "citation_accuracy": 1.0,
-      "routing_accuracy": 0.82,
-      "routing_precision": 0.364,
+      "routing_accuracy": 0.92,
+      "routing_precision": 0.377,
       "modality_match": 1.0,
-      "answer_correctness": 0.875,
+      "answer_correctness": 1.0,
       "retry_efficiency": 0.68,
-      "latency_seconds": 43.038
+      "latency_seconds": 67.984
     },
     "by_category": {
       "comparison": {
         "n": 3,
-        "faithfulness": 0.636,
+        "faithfulness": 0.935,
         "citation_accuracy": 1.0,
-        "routing_accuracy": 0.0,
-        "routing_precision": 0.0,
-        "answer_correctness": 0.667,
+        "routing_accuracy": 0.333,
+        "routing_precision": 0.111,
+        "answer_correctness": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 49.001
+        "latency_seconds": 60.705
       },
       "edge": {
         "n": 5,
-        "faithfulness": 0.389,
+        "faithfulness": 0.414,
         "citation_accuracy": 1.0,
         "routing_accuracy": 1.0,
         "routing_precision": 0.0,
         "answer_correctness": 1.0,
         "retry_efficiency": 0.734,
-        "latency_seconds": 57.607
+        "latency_seconds": 87.666
       },
       "factual": {
         "n": 3,
-        "faithfulness": 0.519,
+        "faithfulness": 0.914,
         "citation_accuracy": 1.0,
-        "routing_accuracy": 0.667,
+        "routing_accuracy": 1.0,
         "routing_precision": 0.0,
-        "answer_correctness": 0.667,
+        "answer_correctness": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 29.129
+        "latency_seconds": 43.611
       },
       "multimodal_document": {
         "n": 2,
-        "faithfulness": 0.269,
+        "faithfulness": 0.396,
         "citation_accuracy": 1.0,
-        "routing_accuracy": 0.75,
-        "routing_precision": 1.0,
+        "routing_accuracy": 1.0,
+        "routing_precision": 0.75,
         "modality_match": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 33.584
+        "latency_seconds": 69.125
       },
       "ocr_extraction": {
         "n": 1,
-        "faithfulness": 0.286,
+        "faithfulness": 0.429,
         "citation_accuracy": 1.0,
         "routing_accuracy": 1.0,
         "routing_precision": 1.0,
         "modality_match": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 16.038
+        "latency_seconds": 57.963
       },
       "reasoning": {
         "n": 3,
-        "faithfulness": 0.765,
+        "faithfulness": 0.733,
         "citation_accuracy": 1.0,
         "routing_accuracy": 1.0,
-        "routing_precision": 0.5,
+        "routing_precision": 0.444,
         "answer_correctness": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 58.83
+        "latency_seconds": 52.579
       },
       "sql": {
         "n": 3,
-        "faithfulness": 0.689,
+        "faithfulness": 0.846,
         "citation_accuracy": 1.0,
         "routing_accuracy": 1.0,
         "routing_precision": 0.833,
         "answer_correctness": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 25.163
+        "latency_seconds": 88.164
       },
       "summary": {
         "n": 3,
-        "faithfulness": 0.742,
+        "faithfulness": 0.803,
         "citation_accuracy": 1.0,
         "routing_accuracy": 1.0,
         "routing_precision": 0.0,
         "answer_correctness": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 50.706
+        "latency_seconds": 72.779
       },
       "visual_reasoning": {
         "n": 2,
-        "faithfulness": 0.351,
+        "faithfulness": 0.332,
         "citation_accuracy": 1.0,
         "routing_accuracy": 1.0,
         "routing_precision": 1.0,
         "modality_match": 1.0,
         "retry_efficiency": 0.667,
-        "latency_seconds": 33.113
+        "latency_seconds": 55.775
       }
     },
     "examples": 25,
@@ -564,182 +564,182 @@
         "question": "Which supplier has the most problems?",
         "category": "factual",
         "scores": {
-          "faithfulness": 0.0,
+          "faithfulness": 0.909,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.0,
           "modality_match": null,
-          "answer_correctness": 0.0,
+          "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 41.147
+          "latency_seconds": 45.319
         }
       },
       {
         "question": "What is the total number of orders in the database?",
         "category": "factual",
         "scores": {
-          "faithfulness": 0.667,
+          "faithfulness": 0.833,
           "citation_accuracy": 1.0,
-          "routing_accuracy": 0.0,
+          "routing_accuracy": 1.0,
           "routing_precision": 0.0,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 15.289
+          "latency_seconds": 52.524
         }
       },
       {
         "question": "Who is the primary contact for Apex Materials?",
         "category": "factual",
         "scores": {
-          "faithfulness": 0.889,
+          "faithfulness": 1.0,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.0,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 30.951
+          "latency_seconds": 32.989
         }
       },
       {
         "question": "Why are there dispatch delays?",
         "category": "reasoning",
         "scores": {
-          "faithfulness": 0.766,
+          "faithfulness": 0.711,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
-          "routing_precision": 0.5,
+          "routing_precision": 0.333,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 75.367
+          "latency_seconds": 49.208
         }
       },
       {
         "question": "What factors contribute to late deliveries in Q4?",
         "category": "reasoning",
         "scores": {
-          "faithfulness": 0.824,
+          "faithfulness": 0.852,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.5,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 47.765
+          "latency_seconds": 51.908
         }
       },
       {
         "question": "How does supplier reliability affect order fulfilment rates?",
         "category": "reasoning",
         "scores": {
-          "faithfulness": 0.705,
+          "faithfulness": 0.635,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.5,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 53.357
+          "latency_seconds": 56.62
         }
       },
       {
         "question": "Show monthly order trend",
         "category": "sql",
         "scores": {
-          "faithfulness": 0.474,
+          "faithfulness": 0.972,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.5,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 29.195
+          "latency_seconds": 97.612
         }
       },
       {
         "question": "What is the average order value by region?",
         "category": "sql",
         "scores": {
-          "faithfulness": 0.941,
+          "faithfulness": 0.9,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 1.0,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 21.008
+          "latency_seconds": 122.75
         }
       },
       {
         "question": "List the top 5 suppliers by order volume",
         "category": "sql",
         "scores": {
-          "faithfulness": 0.652,
+          "faithfulness": 0.667,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 1.0,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 25.287
+          "latency_seconds": 44.131
         }
       },
       {
         "question": "Summarise the overall supply chain performance",
         "category": "summary",
         "scores": {
-          "faithfulness": 0.793,
+          "faithfulness": 0.711,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.0,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 57.678
+          "latency_seconds": 62.917
         }
       },
       {
         "question": "Give me an executive overview of logistics operations",
         "category": "summary",
         "scores": {
-          "faithfulness": 0.696,
+          "faithfulness": 0.729,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.0,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 44.54
+          "latency_seconds": 69.918
         }
       },
       {
         "question": "What are the key takeaways from the last quarter?",
         "category": "summary",
         "scores": {
-          "faithfulness": 0.738,
+          "faithfulness": 0.968,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.0,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 49.901
+          "latency_seconds": 85.502
         }
       },
       {
         "question": "Compare supplier performance between Q3 and Q4",
         "category": "comparison",
         "scores": {
-          "faithfulness": 0.909,
+          "faithfulness": 0.907,
           "citation_accuracy": 1.0,
-          "routing_accuracy": 0.0,
-          "routing_precision": 0.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.333,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 76.489
+          "latency_seconds": 71.423
         }
       },
       {
@@ -753,35 +753,35 @@
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 27.113
+          "latency_seconds": 61.929
         }
       },
       {
         "question": "How do on-time delivery rates differ across suppliers?",
         "category": "comparison",
         "scores": {
-          "faithfulness": 0.0,
+          "faithfulness": 0.897,
           "citation_accuracy": 1.0,
           "routing_accuracy": 0.0,
           "routing_precision": 0.0,
           "modality_match": null,
-          "answer_correctness": 0.0,
+          "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 43.402
+          "latency_seconds": 48.762
         }
       },
       {
         "question": "Tell me everything",
         "category": "edge",
         "scores": {
-          "faithfulness": 0.785,
+          "faithfulness": 0.86,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.0,
           "modality_match": null,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 56.87
+          "latency_seconds": 108.869
         }
       },
       {
@@ -795,21 +795,21 @@
           "modality_match": null,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 44.936
+          "latency_seconds": 64.866
         }
       },
       {
         "question": "What was the dispatch delay for Apex Materials in October, and also how does that compare with November, and what recommendations would you make?",
         "category": "edge",
         "scores": {
-          "faithfulness": 0.826,
+          "faithfulness": 0.875,
           "citation_accuracy": 1.0,
           "routing_accuracy": 1.0,
           "routing_precision": 0.0,
           "modality_match": null,
           "answer_correctness": 1.0,
           "retry_efficiency": 0.667,
-          "latency_seconds": 110.69
+          "latency_seconds": 143.555
         }
       },
       {
@@ -823,7 +823,7 @@
           "modality_match": null,
           "answer_correctness": null,
           "retry_efficiency": 1.0,
-          "latency_seconds": 36.177
+          "latency_seconds": 63.951
         }
       },
       {
@@ -837,12 +837,40 @@
           "modality_match": null,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 39.361
+          "latency_seconds": 57.089
         }
       },
       {
         "question": "What does the chart in the quarterly report show?",
         "category": "visual_reasoning",
+        "scores": {
+          "faithfulness": 0.364,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 58.084
+        }
+      },
+      {
+        "question": "Describe the architecture diagram",
+        "category": "visual_reasoning",
+        "scores": {
+          "faithfulness": 0.3,
+          "citation_accuracy": 1.0,
+          "routing_accuracy": 1.0,
+          "routing_precision": 1.0,
+          "modality_match": 1.0,
+          "answer_correctness": null,
+          "retry_efficiency": 0.667,
+          "latency_seconds": 53.465
+        }
+      },
+      {
+        "question": "What text appears in the scanned document image?",
+        "category": "ocr_extraction",
         "scores": {
           "faithfulness": 0.429,
           "citation_accuracy": 1.0,
@@ -851,35 +879,7 @@
           "modality_match": 1.0,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 35.733
-        }
-      },
-      {
-        "question": "Describe the architecture diagram",
-        "category": "visual_reasoning",
-        "scores": {
-          "faithfulness": 0.273,
-          "citation_accuracy": 1.0,
-          "routing_accuracy": 1.0,
-          "routing_precision": 1.0,
-          "modality_match": 1.0,
-          "answer_correctness": null,
-          "retry_efficiency": 0.667,
-          "latency_seconds": 30.493
-        }
-      },
-      {
-        "question": "What text appears in the scanned document image?",
-        "category": "ocr_extraction",
-        "scores": {
-          "faithfulness": 0.286,
-          "citation_accuracy": 1.0,
-          "routing_accuracy": 1.0,
-          "routing_precision": 1.0,
-          "modality_match": 1.0,
-          "answer_correctness": null,
-          "retry_efficiency": 0.667,
-          "latency_seconds": 16.038
+          "latency_seconds": 57.963
         }
       },
       {
@@ -893,21 +893,21 @@
           "modality_match": 1.0,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 34.125
+          "latency_seconds": 89.036
         }
       },
       {
         "question": "What data is in the Excel spreadsheet?",
         "category": "multimodal_document",
         "scores": {
-          "faithfulness": 0.538,
+          "faithfulness": 0.791,
           "citation_accuracy": 1.0,
-          "routing_accuracy": 0.5,
-          "routing_precision": null,
+          "routing_accuracy": 1.0,
+          "routing_precision": 0.5,
           "modality_match": 1.0,
           "answer_correctness": null,
           "retry_efficiency": 0.667,
-          "latency_seconds": 33.044
+          "latency_seconds": 49.214
         }
       }
     ]

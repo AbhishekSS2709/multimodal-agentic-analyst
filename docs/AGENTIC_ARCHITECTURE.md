@@ -180,7 +180,7 @@ Heuristic mode, 25 cases, bge-base, no API calls at all:
 | Faithfulness | 0.803 |
 | Answer correctness | 0.792 |
 | Retry efficiency | 0.720 |
-| Mean latency | 0.786 s |
+| Mean latency | 1.53 s |
 
 ### Heuristic vs LLM planner, all 25 questions
 
@@ -189,77 +189,58 @@ Same 25 questions, same corpus, same indices, one run. The LLM arm is
 free tiers because a 25-example run costs ~200 LLM calls, and both Gemini
 (20 requests/day) and Groq (200,000 tokens/day) exhaust before it finishes.
 
-**Neither planner dominates.**
-
 | Metric | Heuristic | LLM (`gemma-4-E4B-it`) |
 |---|---:|---:|
-| Routing accuracy | **0.960** | 0.820 |
-| Routing precision | **0.800** | 0.364 |
-| Mean latency | **0.79 s** | 43.04 s |
-| Answer correctness | 0.792 | **0.875** |
+| Routing accuracy | **0.960** | 0.920 |
+| Routing precision | **0.800** | 0.377 |
+| Mean latency | **1.53 s** | 67.98 s |
+| Answer correctness | 0.792 | **1.000** |
 | Modality match | 0.800 | **1.000** |
 | Retry efficiency | **0.720** | 0.680 |
 
-The split is clean, and it is a split between *routing* and *answering*.
+The split is between *routing* and *answering*: the heuristic dispatches more
+precisely, the LLM composes better answers once dispatched.
 
-**The heuristic routes better.** The LLM averages 2.08 specialists per query
-against 1.60, which is where its precision goes, and it still **drops the
-`document` floor** on 6 of 25 — routing `['analytics']` alone on three SQL
-questions and a comparative one, and `['visual']` alone on the OCR case. So it
-over-dispatches and under-dispatches at the same time. `plan_heuristic`
-guarantees `document` is present, so it cannot make that mistake.
+**The heuristic still routes more precisely.** The LLM averages 2.52
+specialists per query against 1.60, which is where its precision goes. Its one
+remaining routing weakness is `comparison`, at 0.333 — it reaches for
+`analytics` where the knowledge graph is wanted, and adds `visual` to questions
+with no visual content. Every other category routes at 1.000, and it beats the
+heuristic on `multimodal_document` (1.000 vs 0.500).
 
-**The LLM answers better, and the gap is entirely abstractive work.** It wins
-5 examples and loses 2. Every win is a question whose answer has to be
-*composed* rather than quoted:
-
-| Question | Heuristic | LLM |
-|---|---:|---:|
-| What are the key takeaways from the last quarter? | 0.00 | **1.00** |
-| Compare supplier performance between Q3 and Q4 | 0.00 | **1.00** |
-| How does supplier reliability affect order fulfilment rates? | 0.50 | **1.00** |
-| What is the average order value by region? | 0.50 | **1.00** |
-| Why are there dispatch delays? | 0.67 | **1.00** |
-| Which supplier has the most problems? | **1.00** | 0.00 |
-| How do on-time delivery rates differ across suppliers? | **1.00** | 0.00 |
-
+**The LLM answers better, and the gap is entirely abstractive work.**
 `synthesize_heuristic` is extractive by design — it stitches the top findings
 together with citation markers. On `summary`, `comparison` and `reasoning`
-questions that surfaces the right evidence and never turns it into an answer.
+questions that surfaces the right evidence and never turns it into an answer,
+which is why the heuristic scores 0.000 on "What are the key takeaways from the
+last quarter?" while answering it with the correct figures.
 
-The two losses are a different failure, and not a routing one — both were
-routed to `['document', 'analytics']`, correctly. The model **abstained**,
-answering "The findings do not contain the answer" on questions the corpus
-does answer (Apex Materials accounts for 27 of 44 delayed dispatches). That
-is our own synthesis prompt talking: it instructs the model to say so plainly
-rather than guess, and a 7.5B model takes the instruction too readily. The
-extractive arm cannot abstain, so it dumps the evidence — and because
-`answer_correctness` is keyword containment, dumping the right evidence scores
-1.000 without composing anything. Neither behaviour is straightforwardly
-better; the metric simply rewards one of them.
+**Read the 1.000 with care.** `answer_correctness` is keyword containment
+scored on the 16 of 25 examples that carry an expectation, not a judgement of
+whether an answer is right. It is a ceiling on a proxy, not a solved problem.
 
-This reverses what an earlier version of this document claimed. Two artifacts
-produced the old result, and both are now fixed:
-
-- The evaluation **withheld the SQL warehouse from both arms**, because
-  `SQLAgent` autodetected a provider of its own and would burn the Gemini
-  budget. Every `sql` question was scored with the database switched off.
-- Every prior LLM arm **ran out of free-tier budget mid-run** and silently
-  degraded to heuristics — the Groq attempt died at example 21 of 25, and the
-  degraded tail was *improving* its routing scores.
-
-This run has neither problem: the warehouse is live in both arms, and there
-were **zero planning fallbacks** in 25 examples, so every plan scored above is
-genuinely the model's.
+**What is and is not attributable to the fixes.** Enforcing the `document`
+floor and correcting the supervisor prompt moved routing accuracy 0.820 ->
+0.920 and took plans missing the floor from 6 of 25 to 0 — those are direct,
+and were confirmed on a 22-example partial run before this one. Answer
+correctness moved 0.875 -> 1.000 in the same change, but the two questions that
+had failed were routed identically in both runs, so the plan is not what
+changed for them. A 7.5B model has real run-to-run variance and this is a
+single run: treat the routing numbers as measured and the correctness ceiling
+as partly luck.
 
 **Two caveats.**
 
 *Faithfulness is not comparable across the arms and is left out of the table.*
 It is lexical overlap between the answer's content words and the findings text,
 and the heuristic synthesizer quotes findings verbatim, so it scores high by
-construction (0.803 against the LLM's 0.541). That gap measures abstraction,
-not hallucination — and abstraction is exactly what wins the correctness
-column above.
+construction (0.803 against the LLM's 0.666). That gap measures abstraction,
+not hallucination — and abstraction is what wins the correctness column.
+
+*Latency is not a fair reading of the model.* The 67.98 s mean was measured on
+a machine at 93% memory use and swapping heavily; an earlier run of the same
+model on the same server averaged 43 s. Neither number is a benchmark of the
+server.
 
 *Three of 25 gradings fell back*, all because the model answered `"N/A"` when
 asked whether a document was relevant. That is a non-answer rather than a
