@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: System packages
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr libmagic1 ffmpeg
+
+      - name: Install dependencies (CPU torch)
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu torch
+          pip install -r requirements.txt pytest httpx ruff
+
+      - name: Lint (syntax errors and undefined names)
+        run: ruff check --isolated --select E9,F63,F7,F82 src tests app.py scripts
+
+      - name: Tests
+        run: pytest -q
+
+  docker:
+    name: Docker build and smoke test
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+
+      - name: Build image (downloads models, builds indices)
+        run: docker build -t analyst:ci .
+
+      - name: Start container
+        run: docker run -d --name analyst -p 7860:7860 analyst:ci
+
+      - name: UI health
+        run: |
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:7860/_stcore/health && exit 0
+            sleep 2
+          done
+          docker logs analyst; exit 1
+
+      - name: Agentic query returns a cited answer
+        run: |
+          body='{"question":"Why are there dispatch delays?","require_approval":true}'
+          docker exec analyst curl -sf -X POST http://127.0.0.1:8000/api/v2/query \
+            -H 'content-type: application/json' -d "$body" > answer.json
+          python3 - <<'PY'
+          import json
+          r = json.load(open("answer.json"))
+          print(json.dumps({k: r[k] for k in ("answer", "specialists", "verification")}, indent=2)[:1500])
+          assert r["answer"].strip(), "empty answer"
+          assert r["citations"], "no citations: the index is empty or retrieval is broken"
+          PY
+
+      - name: Public-demo guard is on
+        run: |
+          code=$(docker exec analyst curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8000/api/upload)
+          test "$code" = "403"
+
+      - name: Logs on failure
+        if: failure()
+        run: docker logs analyst || true

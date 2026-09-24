@@ -1,0 +1,41 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - name: Skip when HF_TOKEN is not configured
+        if: env.HF_TOKEN == ''
+        run: echo "::notice::Add an HF_TOKEN repository secret to enable deploys." 
+
+      - uses: actions/checkout@v4
+        if: env.HF_TOKEN != ''
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-python@v5
+        if: env.HF_TOKEN != ''
+        with:
+          python-version: "3.11"
+
+      - name: Deploy
+        if: env.HF_TOKEN != ''
+        env:
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+        run: |
+          pip install "huggingface_hub>=0.25"
+          python scripts/deploy_space.py

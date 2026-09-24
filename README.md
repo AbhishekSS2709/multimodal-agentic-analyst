@@ -1,5 +1,7 @@
 # Multimodal Enterprise Research Analyst
 
+[![CI](https://github.com/AbhishekSS2709/multimodal-agentic-analyst/actions/workflows/ci.yml/badge.svg)](https://github.com/AbhishekSS2709/multimodal-agentic-analyst/actions/workflows/ci.yml)
+
 A production-shaped RAG system with a **supervisor-orchestrated multi-agent
 layer** built on LangGraph, LangChain, and LangSmith.
 
@@ -32,7 +34,7 @@ that is not a plain read pauses the graph for human approval over durable
 checkpointed state.
 
 **It runs without an API key.** Every LLM call site in `src/graph/` has a
-deterministic heuristic fallback, so the full 357-test suite runs offline — and
+deterministic heuristic fallback, so the full test suite runs offline — and
 LLM-vs-heuristic becomes a measurable experiment rather than an assumption.
 (The suite is hermetic about this: `tests/conftest.py` blanks every credential,
 because otherwise it only *happened* to be offline when no key was configured.)
@@ -48,6 +50,39 @@ than a solved problem.
 
 See **[docs/AGENTIC_ARCHITECTURE.md](docs/AGENTIC_ARCHITECTURE.md)** for the
 graph topology, state reducers, and evaluation design.
+
+---
+
+## Deployment
+
+The app ships as one Docker image: FastAPI on an internal port, Streamlit on
+7860, supervised by `docker/start.sh` so the container exits (and is
+restarted) if either process dies.
+
+```bash
+docker build -t analyst .          # downloads models, builds all indices
+docker run -p 7860:7860 analyst    # http://localhost:7860
+```
+
+The build runs `scripts/build_index.py`, which fails the build if the vector
+store comes out empty -- `setup()` swallows step errors so a laptop degrades
+gracefully, but a container that boots with no index answers every question
+with "I could not find relevant information" while looking healthy.
+
+**CI/CD** (`.github/workflows/`):
+
+| Workflow | Runs on | What it checks |
+|---|---|---|
+| `ci.yml` / test | every push and PR | full test suite, lint for syntax errors and undefined names |
+| `ci.yml` / docker | push to `main` | builds the image, boots it, asks the agentic graph a real question and fails unless the answer carries citations; confirms the demo guard is on |
+| `deploy.yml` | after CI passes on `main` | publishes to a Hugging Face Space (needs an `HF_TOKEN` secret) |
+
+**Public-demo mode** (`DEMO_MODE=1`, on in the image): uploads and the
+evaluation run are refused, and questions are capped per day
+(`DEMO_DAILY_QUERY_LIMIT`, default 200), so a public link cannot write to the
+server or drain the LLM key behind it. Add `GROQ_API_KEY` (or
+`GEMINI_API_KEY`) as a repository secret and the deploy copies it into the
+Space, switching the graph from heuristic to LLM mode.
 
 ---
 
@@ -204,7 +239,7 @@ abstention shares few tokens with the retrieved findings by construction.
 python -m pytest tests/ -q
 ```
 
-357 tests, ~54s, fully offline. `tests/conftest.py` blanks every credential for
+366 tests, fully offline. `tests/conftest.py` blanks every credential for
 the session, so the suite cannot reach a live model even when `.env` holds real
 keys — before that, tests calling `run_query` issued real Gemini requests and
 wedged for 18 minutes inside retry backoff.
