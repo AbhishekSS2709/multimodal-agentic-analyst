@@ -19,12 +19,12 @@ jobs:
         if: env.HF_TOKEN == ''
         run: echo "::notice::Add an HF_TOKEN repository secret to enable deploys." 
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         if: env.HF_TOKEN != ''
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: env.HF_TOKEN != ''
         with:
           python-version: "3.11"
