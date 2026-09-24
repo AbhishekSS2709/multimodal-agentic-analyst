@@ -38,19 +38,38 @@ _hf_pipeline = None
 _active_provider: Optional[str] = None
 
 
+class _Seq2SeqGenerator:
+    """flan-t5 generation without ``transformers.pipeline``.
+
+    transformers 5 removed the ``text2text-generation`` pipeline task, so the
+    local fallback raised "Unknown task" on any current install. Calling the
+    tokenizer and ``generate`` directly works on 4.x and 5.x alike, and keeps
+    the pipeline's ``[{"generated_text": ...}]`` return shape.
+    """
+
+    def __init__(self, model_name: str, max_new_tokens: int = 512) -> None:
+        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+        self.model.eval()
+        self.max_new_tokens = max_new_tokens
+
+    def __call__(self, text: str):
+        import torch
+
+        inputs = self.tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+        with torch.no_grad():
+            output = self.model.generate(**inputs, max_new_tokens=self.max_new_tokens)
+        return [{"generated_text": self.tokenizer.decode(output[0], skip_special_tokens=True)}]
+
+
 def _get_hf_pipeline():
-    """Lazy-load the HuggingFace text2text pipeline."""
+    """Lazy-load the local seq2seq fallback model."""
     global _hf_pipeline
     if _hf_pipeline is None:
-        from transformers import pipeline as hf_pipeline
-
         logger.info("Loading HuggingFace model: %s (this may take a moment)...", HF_MODEL)
-        _hf_pipeline = hf_pipeline(
-            "text2text-generation",
-            model=HF_MODEL,
-            max_new_tokens=512,
-            device="cpu",
-        )
+        _hf_pipeline = _Seq2SeqGenerator(HF_MODEL, max_new_tokens=512)
         logger.info("HuggingFace model loaded successfully.")
     return _hf_pipeline
 
