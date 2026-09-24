@@ -1,0 +1,14 @@
+.git
+.github
+.pytest_cache
+**/__pycache__
+*.py[cod]
+.env
+*.env
+!.env.example
+vector_store
+evaluation_results
+static/charts
+data/graph_checkpoints.db*
+tests
+docs
