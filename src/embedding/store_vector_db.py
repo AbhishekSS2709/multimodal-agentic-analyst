@@ -249,6 +249,14 @@ class VectorStore:
 
         return results
 
+    def stored_chunks(self) -> List[Dict[str, Any]]:
+        """Every stored chunk's metadata (including its text), in index order.
+
+        Position ``i`` of the result is FAISS row ``i``, so a chunk list
+        rebuilt from this lines up with the vectors by construction.
+        """
+        return [dict(self._metadata[pos]) for pos in sorted(self._metadata)]
+
     @property
     def total_vectors(self) -> int:
         """Return the number of vectors currently in the index."""

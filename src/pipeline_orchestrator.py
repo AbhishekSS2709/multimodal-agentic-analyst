@@ -201,8 +201,52 @@ class EnterpriseRAGOrchestrator:
             self._bm25_search = BM25Search()
         return self._bm25_search
 
+    def _restore_chunks_from_store(self) -> None:
+        """Rebuild the chunk list, and BM25 over it, from the saved vector store.
+
+        ``setup()`` builds the chunk list and the BM25 index in memory.  A
+        process that did not run it -- the API server, the CLI demo, a
+        container started from a pre-built image -- used to get an empty chunk
+        list and an empty BM25 index.  The hybrid retriever then returned bare
+        integer indices instead of passages, every document was graded
+        irrelevant, and the graph answered "I could not find relevant
+        information" while the FAISS index held all 498 chunks.
+
+        The FAISS metadata already stores each chunk's text, so the chunk list
+        is recoverable from it.  Rebuilding BM25 from that same list (rather
+        than loading bm25_index.pkl) keeps BM25 row ``i`` and vector row ``i``
+        pointing at the same chunk by construction.
+        """
+        if self._chunks:
+            return
+        try:
+            rows = self._get_vector_store().stored_chunks()
+        except Exception as exc:
+            logger.warning("Could not read chunks from the vector store: %s", exc)
+            return
+        if not rows:
+            return
+
+        from src.chunking.chunker import Chunk
+
+        chunks = []
+        for row in rows:
+            chunk_id = row.pop("chunk_id", "")
+            doc_id = row.pop("doc_id", "")
+            text = row.pop("text", "")
+            token_count = row.pop("token_count", 0)
+            chunks.append(Chunk(chunk_id=chunk_id, text=text, metadata=row,
+                                doc_id=doc_id, token_count=token_count))
+        self._chunks = chunks
+
+        bm25 = self._get_bm25_search()
+        if bm25.corpus_size == 0:
+            bm25.add_documents([c.text for c in chunks])
+        logger.info("Restored %d chunks and BM25 index from the vector store.", len(chunks))
+
     def _get_hybrid_retriever(self):
         if self._hybrid_retriever is None:
+            self._restore_chunks_from_store()
             from src.retrieval.hybrid_retriever import HybridRetriever
             # The HybridRetriever needs a VectorRetriever and BM25Searcher
             # that both expose search(query, top_k) -> [(idx, score)].
@@ -259,7 +303,18 @@ class EnterpriseRAGOrchestrator:
     def _get_knowledge_graph_builder(self):
         if self._knowledge_graph_builder is None:
             from src.knowledge_graph.graph_builder import KnowledgeGraphBuilder
-            self._knowledge_graph_builder = KnowledgeGraphBuilder()
+            builder = KnowledgeGraphBuilder()
+            # setup() saves the graph; a fresh process has to load it, or the
+            # graph specialist reports "unavailable" on every question.
+            kg_path = VECTOR_DB_DIR / "knowledge_graph.pkl"
+            if builder.graph.number_of_nodes() == 0 and kg_path.exists():
+                try:
+                    builder.load_graph(kg_path)
+                    logger.info("Loaded knowledge graph (%d nodes) from %s.",
+                                builder.graph.number_of_nodes(), kg_path)
+                except Exception as exc:
+                    logger.warning("Could not load knowledge graph: %s", exc)
+            self._knowledge_graph_builder = builder
         return self._knowledge_graph_builder
 
     def _get_graph_retriever(self):
@@ -613,7 +668,11 @@ class EnterpriseRAGOrchestrator:
         # -- Step 4: Build BM25 index ----------------------------------------
         logger.info("Step 4/7: Building BM25 index ...")
         try:
-            bm25 = self._get_bm25_search()
+            # Fresh index: add_documents() appends, and this instance may
+            # already hold one restored from the vector store.
+            from src.retrieval.bm25_search import BM25Search
+            bm25 = self._bm25_search = BM25Search()
+            self._hybrid_retriever = None
             chunk_texts = [c.text for c in self._chunks]
             if chunk_texts:
                 bm25.add_documents(chunk_texts)
@@ -644,7 +703,13 @@ class EnterpriseRAGOrchestrator:
         # -- Step 6: Build knowledge graph -----------------------------------
         logger.info("Step 6/7: Building knowledge graph ...")
         try:
-            kg_builder = self._get_knowledge_graph_builder()
+            # A full rebuild starts from an empty graph. The lazy accessor loads
+            # the saved graph, and build_graph() appends, so reusing it here
+            # would duplicate every triple on each re-run.
+            from src.knowledge_graph.graph_builder import KnowledgeGraphBuilder
+            kg_builder = KnowledgeGraphBuilder()
+            self._knowledge_graph_builder = kg_builder
+            self._graph_retriever = None
             # Convert Document objects to dicts for the graph builder
             doc_dicts = [
                 {
