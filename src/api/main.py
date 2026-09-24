@@ -83,6 +83,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Public-demo guard rails (no-op unless DEMO_MODE=1).
+from src.api.demo_guard import DemoGuardMiddleware, demo_mode_enabled
+
+if demo_mode_enabled():
+    app.add_middleware(DemoGuardMiddleware)
+
 # Mount static directory if it exists
 _static_dir = PROJECT_ROOT / "static"
 if _static_dir.is_dir():
