@@ -18,8 +18,20 @@ import streamlit as st
 # Configuration
 # ---------------------------------------------------------------------------
 
-API_BASE = "http://localhost:8000"
-API_TIMEOUT = 120  # seconds
+import os
+
+API_BASE = os.getenv("API_BASE", "http://localhost:8000")
+API_TIMEOUT = int(os.getenv("API_TIMEOUT", "180"))  # seconds
+# Public demo: hide the upload box and the evaluation tab (the API refuses
+# both anyway -- see src/api/demo_guard.py).
+DEMO_MODE = os.getenv("DEMO_MODE", "").strip().lower() in ("1", "true", "yes", "on")
+
+EXAMPLE_QUESTIONS = [
+    "Why are there dispatch delays?",
+    "Which suppliers have the most delays, and what do the contracts say about penalties?",
+    "What machine failures were logged, and what caused them?",
+    "How many orders were placed per region?",
+]
 
 st.set_page_config(
     page_title="Enterprise RAG System",
@@ -234,12 +246,20 @@ def _render_sidebar():
         st.divider()
 
         # --- Upload section ---
-        st.markdown('<div class="sidebar-section">Upload Documents</div>', unsafe_allow_html=True)
-        uploaded_file = st.file_uploader(
-            "Choose a file",
-            type=["pdf", "csv", "txt", "log", "md"],
-            label_visibility="collapsed",
-        )
+        if DEMO_MODE:
+            st.info(
+                "Public demo: questions run against a fixed sample corpus of "
+                "supplier contracts, emails, dispatch and machine logs, orders, "
+                "charts and a scanned notice. Uploads are turned off."
+            )
+            uploaded_file = None
+        else:
+            st.markdown('<div class="sidebar-section">Upload Documents</div>', unsafe_allow_html=True)
+            uploaded_file = st.file_uploader(
+                "Choose a file",
+                type=["pdf", "csv", "txt", "log", "md"],
+                label_visibility="collapsed",
+            )
         if uploaded_file is not None:
             if st.button("Process Upload", use_container_width=True, type="primary"):
                 with st.spinner("Processing document..."):
@@ -313,6 +333,98 @@ def _render_sidebar():
                     label = comp.replace("_", " ").title()
                     st.text(f"  [{icon}] {label}: {comp_status}")
 
+
+
+# ---------------------------------------------------------------------------
+# Tab 0: Agentic Analyst (LangGraph, /api/v2)
+# ---------------------------------------------------------------------------
+
+def _render_analyst_result(result: Dict[str, Any]) -> None:
+    st.markdown("#### Answer")
+    st.markdown(result.get("answer") or "_No answer returned._")
+
+    specialists = result.get("specialists") or []
+    verification = result.get("verification") or {}
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Specialists dispatched", len(specialists))
+    col2.metric("Grounded", "Yes" if verification.get("grounded") else "No")
+    col3.metric("Synthesis attempts", result.get("retry_count", 0) or 1)
+    if specialists:
+        st.caption("Ran in parallel: " + ", ".join(specialists))
+    if verification.get("reason"):
+        st.caption(f"Verifier: {verification['reason']}")
+
+    citations = result.get("citations") or []
+    if citations:
+        with st.expander(f"Sources ({len(citations)})", expanded=True):
+            for c in citations:
+                label = c.get("source") or c.get("doc_id") or "source"
+                who = c.get("specialist")
+                st.markdown(f"**{label}**" + (f"  _via {who}_" if who else ""))
+                if c.get("snippet"):
+                    st.caption(c["snippet"][:400])
+
+    trace = result.get("trace") or []
+    if trace:
+        with st.expander("Agent trace (node by node)"):
+            st.code("\n".join(trace), language="text")
+
+    meta = result.get("metadata") or {}
+    if meta:
+        st.caption(f"Mode: {meta.get('llm_mode', 'unknown')}")
+
+
+def _render_analyst_tab():
+    st.markdown("### Agentic Analyst")
+    st.markdown(
+        "A supervisor agent splits your question, sends it to specialist agents "
+        "(documents, images, SQL analytics, knowledge graph) **in parallel**, "
+        "grades the evidence, retries weak searches, and checks the final answer "
+        "against its sources before returning it."
+    )
+
+    example = st.selectbox(
+        "Try an example",
+        ["(write your own)"] + EXAMPLE_QUESTIONS,
+        key="analyst_example",
+    )
+    default_q = "" if example == "(write your own)" else example
+    question = st.text_input(
+        "Question",
+        value=default_q,
+        key="analyst_question",
+        placeholder="e.g., Why are there dispatch delays?",
+    )
+
+    if st.button("Run analyst", type="primary", key="analyst_run") and question.strip():
+        with st.spinner("Agents working..."):
+            result = _api_post(
+                "/api/v2/query",
+                json_body={"question": question.strip(), "require_approval": True},
+            )
+        if result:
+            st.session_state["analyst_result"] = result
+
+    result = st.session_state.get("analyst_result")
+    if not result:
+        return
+
+    if result.get("interrupted"):
+        st.warning("The agent generated a query that changes data and paused for human approval.")
+        st.json(result.get("interrupt_payload") or {})
+        c1, c2 = st.columns(2)
+        for col, decision in ((c1, "approve"), (c2, "reject")):
+            if col.button(decision.title(), key=f"analyst_{decision}"):
+                resumed = _api_post(
+                    "/api/v2/resume",
+                    json_body={"thread_id": result.get("thread_id", ""), "decision": decision},
+                )
+                if resumed:
+                    st.session_state["analyst_result"] = resumed
+                    st.rerun()
+        return
+
+    _render_analyst_result(result)
 
 # ---------------------------------------------------------------------------
 # Tab 1: Ask Questions
@@ -729,15 +841,24 @@ def main():
     st.markdown('<div class="header-title">Enterprise RAG System</div>', unsafe_allow_html=True)
     st.markdown(
         '<div class="header-subtitle">'
-        "Ask questions, run analytics, explore knowledge graphs, and evaluate system quality."
+        "Multi-agent RAG over text, images, tables and a knowledge graph, with cited, self-verified answers."
         "</div>",
         unsafe_allow_html=True,
     )
 
     # Tabs
-    tab_ask, tab_analytics, tab_kg, tab_eval, tab_feedback = st.tabs(
-        ["Ask Questions", "Analytics", "Knowledge Graph", "Evaluation", "Feedback"]
+    names = ["Agentic Analyst", "Ask Questions", "Analytics", "Knowledge Graph", "Evaluation", "Feedback"]
+    if DEMO_MODE:
+        names.remove("Evaluation")
+    tabs = dict(zip(names, st.tabs(names)))
+
+    with tabs["Agentic Analyst"]:
+        _render_analyst_tab()
+
+    tab_ask, tab_analytics, tab_kg, tab_feedback = (
+        tabs["Ask Questions"], tabs["Analytics"], tabs["Knowledge Graph"], tabs["Feedback"],
     )
+    tab_eval = tabs.get("Evaluation")
 
     with tab_ask:
         _render_ask_tab()
@@ -748,8 +869,9 @@ def main():
     with tab_kg:
         _render_knowledge_graph_tab()
 
-    with tab_eval:
-        _render_evaluation_tab()
+    if tab_eval is not None:
+        with tab_eval:
+            _render_evaluation_tab()
 
     with tab_feedback:
         _render_feedback_tab()
