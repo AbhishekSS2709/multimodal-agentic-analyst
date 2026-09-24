@@ -42,6 +42,9 @@ tiktoken>=0.5.0
 
 # Gemini
 google-genai>=1.0.0
+# src/gemini/client.py imports the older SDK; without it every Gemini-backed
+# path (captioner, answer generator, /api/quota) fails on a clean install.
+google-generativeai>=0.8.0
 
 # Multimodal - Image
 Pillow>=10.0.0
@@ -72,4 +75,7 @@ langgraph-checkpoint-sqlite>=2.0.0
 langchain>=1.2.0
 langchain-core>=1.2.0
 langchain-google-genai>=4.2.0
+# init_chat_model("groq") needs this; without it GROQ_API_KEY silently
+# drops the graph to heuristic mode.
+langchain-groq>=0.3.0
 langsmith>=0.6.0

@@ -6,9 +6,12 @@ import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Literal, Optional
+from typing import TYPE_CHECKING, List, Literal, Optional
 
 from .pdf_loader import Document
+
+if TYPE_CHECKING:  # annotations only; pandas is imported lazily in load_csv
+    import pandas as pd
 
 logger = logging.getLogger(__name__)
 
