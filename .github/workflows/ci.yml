@@ -93,6 +93,7 @@ jobs:
         id: demo
         continue-on-error: true
         run: |
+          sudo apt-get install -y --no-install-recommends ffmpeg >/dev/null
           pip install playwright
           python -m playwright install --with-deps chromium
           python scripts/record_demo.py --url http://localhost:7860 --out demo
@@ -100,6 +101,15 @@ jobs:
             -vf "setpts=0.6*PTS,fps=8,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5" \
             demo/demo.gif
           ls -la demo
+
+      - name: Keep the recording as a run artifact
+        if: always() && hashFiles('demo/*') != ''
+        continue-on-error: true
+        uses: actions/upload-artifact@v5
+        with:
+          name: demo
+          path: demo/
+          retention-days: 14
 
       - name: Publish demo to the demo-assets branch
         if: steps.demo.outcome == 'success' && github.ref == 'refs/heads/main'
