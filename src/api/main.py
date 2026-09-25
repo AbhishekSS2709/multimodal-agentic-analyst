@@ -374,13 +374,19 @@ async def health_check():
 async def system_stats():
     """Return system-level statistics."""
     total_chunks = 0
+    indexed_sources = 0
     try:
         vs = _get_vector_store()
         total_chunks = vs.total_vectors
+        # Documents already in the index (built by setup() or baked into the
+        # image) count too, not just ones uploaded through this server.
+        indexed_sources = len({
+            row.get("source") or row.get("doc_id") for row in vs.stored_chunks()
+        } - {None, ""})
     except Exception:
         pass
 
-    total_docs = _state.get("docs_uploaded", 0)
+    total_docs = max(indexed_sources, _state.get("docs_uploaded", 0))
     queries_answered = _state.get("queries_answered", 0)
     feedback_count = _get_feedback_count()
 
@@ -1065,6 +1071,7 @@ async def analyst_query(request: AnalystQueryRequest):
         logger.error("Analyst graph failed: %s\n%s", exc, traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"Analyst graph failed: {exc}")
 
+    _state["queries_answered"] = _state.get("queries_answered", 0) + 1
     return AnalystResponse(**result)
 
 
