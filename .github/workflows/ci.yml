@@ -41,7 +41,10 @@ jobs:
     needs: test
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+    permissions:
+      contents: write   # push the README demo to the demo-assets branch
+      packages: write   # publish the image to GitHub Container Registry
     steps:
       - uses: actions/checkout@v5
 
@@ -79,6 +82,60 @@ jobs:
         run: |
           code=$(docker exec analyst curl -s -o /dev/null -w '%{http_code}' -X POST http://127.0.0.1:8000/api/upload)
           test "$code" = "403"
+
+      # --- Everything below runs only once the smoke test has passed. -----
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Record README demo
+        id: demo
+        continue-on-error: true
+        run: |
+          pip install playwright
+          python -m playwright install --with-deps chromium
+          python scripts/record_demo.py --url http://localhost:7860 --out demo
+          ffmpeg -loglevel error -y -i demo/demo.webm \
+            -vf "setpts=0.6*PTS,fps=8,scale=960:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5" \
+            demo/demo.gif
+          ls -la demo
+
+      - name: Publish demo to the demo-assets branch
+        if: steps.demo.outcome == 'success' && github.ref == 'refs/heads/main'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir publish && cp demo/demo.gif demo/demo.png publish/
+          cd publish
+          git init -q -b demo-assets
+          git add demo.gif demo.png
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -qm "README demo from ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" demo-assets
+
+      - name: Publish image to GitHub Container Registry
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          # New packages start private, and private storage on a free account
+          # is capped at 500 MB, below this image's size. A tiny image first
+          # creates the package so it can be switched to public (free, no cap).
+          printf 'FROM busybox\nLABEL org.opencontainers.image.source=https://github.com/%s\n' "$GITHUB_REPOSITORY" \
+            | docker build -q -t "$IMAGE:bootstrap" -
+          docker push -q "$IMAGE:bootstrap"
+          docker tag analyst:ci "$IMAGE:latest"
+          docker tag analyst:ci "$IMAGE:${GITHUB_SHA::7}"
+          if docker push -q "$IMAGE:latest" && docker push -q "$IMAGE:${GITHUB_SHA::7}"; then
+            echo "Published $IMAGE:latest" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::Image push failed. If the package is still private, make it public: https://github.com/${GITHUB_REPOSITORY}/pkgs/container/${GITHUB_REPOSITORY#*/} -> Package settings -> Change visibility"
+            exit 1
+          fi
 
       - name: Logs on failure
         if: failure()

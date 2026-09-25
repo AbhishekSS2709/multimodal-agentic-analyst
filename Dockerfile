@@ -2,6 +2,9 @@
 # Built for Hugging Face Spaces (Docker SDK, port 7860); runs anywhere Docker does.
 FROM python:3.11-slim
 
+LABEL org.opencontainers.image.source="https://github.com/AbhishekSS2709/multimodal-agentic-analyst" \
+      org.opencontainers.image.description="Multi-agent RAG analyst: FastAPI + Streamlit, indices baked in"
+
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \

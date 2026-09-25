@@ -2,6 +2,19 @@
 
 [![CI](https://github.com/AbhishekSS2709/multimodal-agentic-analyst/actions/workflows/ci.yml/badge.svg)](https://github.com/AbhishekSS2709/multimodal-agentic-analyst/actions/workflows/ci.yml)
 
+![The agentic analyst answering a question: supervisor dispatches specialists in parallel, answer is verified against its sources](https://raw.githubusercontent.com/AbhishekSS2709/multimodal-agentic-analyst/demo-assets/demo.gif)
+
+*Recorded automatically by CI against the freshly built container on every
+push to `main` -- so the demo is always the current build, not a screenshot
+from months ago. Heuristic mode (no API key).*
+
+**Run it yourself** (needs Docker and ~4 GB of RAM):
+
+```bash
+docker run -p 7860:7860 ghcr.io/abhishekss2709/multimodal-agentic-analyst:latest
+# then open http://localhost:7860
+```
+
 A production-shaped RAG system with a **supervisor-orchestrated multi-agent
 layer** built on LangGraph, LangChain, and LangSmith.
 
@@ -75,14 +88,16 @@ with "I could not find relevant information" while looking healthy.
 |---|---|---|
 | `ci.yml` / test | every push and PR | full test suite, lint for syntax errors and undefined names |
 | `ci.yml` / docker | push to `main` | builds the image, boots it, asks the agentic graph a real question and fails unless the answer carries citations; confirms the demo guard is on |
-| `deploy.yml` | after CI passes on `main` | publishes to a Hugging Face Space (needs an `HF_TOKEN` secret) |
+| `ci.yml` / docker, after the smoke test | push to `main` | records the demo GIF above against the running container, and publishes the image to GitHub Container Registry |
+| `deploy.yml` | manual | publishes to a Hugging Face Space (needs an `HF_TOKEN` secret, and a PRO account: since July 2026 Docker Spaces on the free CPU tier return 402) |
 
 **Public-demo mode** (`DEMO_MODE=1`, on in the image): uploads and the
 evaluation run are refused, and questions are capped per day
 (`DEMO_DAILY_QUERY_LIMIT`, default 200), so a public link cannot write to the
-server or drain the LLM key behind it. Add `GROQ_API_KEY` (or
-`GEMINI_API_KEY`) as a repository secret and the deploy copies it into the
-Space, switching the graph from heuristic to LLM mode.
+server or drain the LLM key behind it. To run in LLM mode, pass a
+key: `docker run -e GROQ_API_KEY=... -p 7860:7860 ghcr.io/abhishekss2709/multimodal-agentic-analyst:latest`
+(the Hugging Face deploy copies `GROQ_API_KEY` / `GEMINI_API_KEY` repository
+secrets into the Space the same way).
 
 ---
 
