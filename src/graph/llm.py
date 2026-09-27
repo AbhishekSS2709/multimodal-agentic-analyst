@@ -96,6 +96,25 @@ def _extra_body() -> dict:
     return body
 
 
+def _vertex_config() -> dict:
+    """Vertex AI settings, when the environment asks for them.
+
+    On Google Cloud (Cloud Run, GKE, a VM) Gemini is reached through Vertex AI
+    with the runtime's own service account -- no API key exists or is needed.
+    Enabled by ``GOOGLE_GENAI_USE_VERTEXAI=true`` plus ``GOOGLE_CLOUD_PROJECT``;
+    ``GOOGLE_CLOUD_LOCATION`` defaults to us-central1.
+    """
+    flag = (os.getenv("GOOGLE_GENAI_USE_VERTEXAI") or "").strip().lower()
+    project = (os.getenv("GOOGLE_CLOUD_PROJECT") or "").strip()
+    if flag not in ("1", "true", "yes") or not project:
+        return {}
+    return {
+        "vertexai": True,
+        "project": project,
+        "location": (os.getenv("GOOGLE_CLOUD_LOCATION") or "us-central1").strip(),
+    }
+
+
 def resolve_provider() -> tuple[Optional[str], Optional[str]]:
     """``(provider, model)`` for the configured LLM, or ``(None, None)``.
 
@@ -118,6 +137,8 @@ def resolve_provider() -> tuple[Optional[str], Optional[str]]:
         provider = next(
             (name for name, _ in _PROVIDER_KEYS if _provider_key(name)), ""
         )
+        if not provider and _vertex_config():
+            provider = "google_genai"
 
     if not provider:
         return None, None
@@ -152,6 +173,8 @@ def get_llm(
         body = _extra_body()
         if body:
             extra["extra_body"] = body
+    elif provider == "google_genai" and not _provider_key(provider) and _vertex_config():
+        extra = _vertex_config()
     elif not _provider_key(provider):
         return None
 

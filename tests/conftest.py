@@ -26,6 +26,11 @@ _CREDENTIAL_VARS = (
     "LANGCHAIN_API_KEY",
     "LANGSMITH_TRACING",
     "LANGCHAIN_TRACING_V2",
+    # Vertex AI needs no key -- the ambient service account is the credential
+    # -- so the switch itself has to be blanked for the suite to stay offline.
+    "GOOGLE_GENAI_USE_VERTEXAI",
+    "GOOGLE_CLOUD_PROJECT",
+    "GRAPH_LLM_PROVIDER",
 )
 
 

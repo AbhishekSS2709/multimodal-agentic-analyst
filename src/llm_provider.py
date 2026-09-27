@@ -110,6 +110,28 @@ def _call_huggingface(prompt: str, system: str) -> str:
     return results[0]["generated_text"].strip()
 
 
+def _call_graph_llm(prompt: str, system: str) -> str:
+    """Use the chat model the agentic graph is configured with.
+
+    ``LLM_PROVIDER=graph`` points the v1 pipeline -- the Ask tab and the SQL
+    writer the analytics specialist calls -- at the same model as the graph,
+    so a Vertex AI deployment does not quietly write its SQL with flan-t5.
+    """
+    from langchain_core.messages import HumanMessage, SystemMessage
+
+    from src.graph.llm import get_llm
+
+    llm = get_llm()
+    if llm is None:
+        raise RuntimeError("LLM_PROVIDER=graph but the graph has no LLM configured")
+    reply = llm.invoke([SystemMessage(content=system), HumanMessage(content=prompt)])
+    content = reply.content
+    if isinstance(content, list):  # some providers return content blocks
+        content = "".join(part.get("text", "") if isinstance(part, dict) else str(part)
+                          for part in content)
+    return str(content).strip()
+
+
 def _call_groq(prompt: str, system: str) -> str:
     """Call Groq API (free tier: 14,400 requests/day)."""
     import urllib.request
@@ -375,6 +397,7 @@ def call_llm(
     providers = {
         "ollama": _call_ollama,
         "huggingface": _call_huggingface,
+        "graph": _call_graph_llm,
         "gemini": _call_gemini,
         "groq": _call_groq,
         "openai": _call_openai,
