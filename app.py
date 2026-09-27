@@ -583,6 +583,13 @@ def _render_knowledge_graph_tab():
         key="kg_entity_search",
     )
 
+    # The interactive graph is ~400 entities running a physics layout in an
+    # iframe. Rendered on every page load it kept the browser busy even for
+    # visitors who never opened this tab, so it is drawn only on request.
+    if not st.toggle("Show interactive graph", value=False, key="kg_show"):
+        st.caption("Off by default: the graph has about 400 entities and is heavy to draw.")
+        return
+
     # Try to load the knowledge graph visualization
     import os
     from pathlib import Path
