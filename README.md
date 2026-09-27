@@ -8,6 +8,11 @@
 push to `main` -- so the demo is always the current build, not a screenshot
 from months ago. Heuristic mode (no API key).*
 
+**Live demo:** https://multimodal-analyst-1085215746830.us-central1.run.app
+-- deployed on Google Cloud Run, scaled to zero when idle, so the first visit
+after a quiet spell takes a minute or two while the container starts and the
+models load; after that, answers come back in seconds.
+
 **Run it yourself** (needs Docker and ~4 GB of RAM):
 
 ```bash
@@ -81,6 +86,19 @@ The build runs `scripts/build_index.py`, which fails the build if the vector
 store comes out empty -- `setup()` swallows step errors so a laptop degrades
 gracefully, but a container that boots with no index answers every question
 with "I could not find relevant information" while looking healthy.
+
+**Cloud Run** (live demo): the published image is served through an Artifact
+Registry remote repository that mirrors GHCR, on 2 vCPU / 4 GiB with
+`--min-instances=0 --max-instances=1` and request-based billing, which keeps a
+demo inside Cloud Run's free monthly allowance.
+
+```bash
+gcloud run deploy multimodal-analyst \
+  --image=us-central1-docker.pkg.dev/$PROJECT/ghcr/abhishekss2709/multimodal-agentic-analyst:latest \
+  --region=us-central1 --port=7860 --cpu=2 --memory=4Gi \
+  --min-instances=0 --max-instances=1 --cpu-boost --session-affinity \
+  --timeout=300 --allow-unauthenticated
+```
 
 **CI/CD** (`.github/workflows/`):
 
