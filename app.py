@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -31,6 +32,26 @@ EXAMPLE_QUESTIONS = [
     "Which suppliers have the most delays, and what do the contracts say about penalties?",
     "What machine failures were logged, and what caused them?",
     "How many orders were placed per region?",
+    "What does the scanned supplier notice say about Apex Materials?",
+    "How did on-time delivery change from quarter to quarter?",
+]
+
+DATA_DIR = Path(__file__).resolve().parent / "data"
+
+# What each demo file is, so a visitor knows what can be asked. Files not
+# listed here are still shown, just without a description.
+CORPUS = [
+    ("Contracts", "contracts.pdf", "Master supply agreements: delivery terms, late-delivery penalties, quality clauses per supplier (also as contracts.txt)."),
+    ("Emails", "emails.txt", "Supplier and customer correspondence about delays, shortages and escalations."),
+    ("Logs", "dispatch_log.txt", "Timestamped dispatch events: shipments, delays and their stated causes."),
+    ("Logs", "machine_failure_logs.txt", "Equipment failures and maintenance across three plants, Jan 2023 to May 2024."),
+    ("Tables", "orders.csv", "175 orders with supplier, region, status and priority (loaded into the SQL warehouse)."),
+    ("Tables", "assets/supplier_metrics.xlsx", "Supplier scorecard spreadsheet."),
+    ("Images", "assets/supplier_delays_chart.png", "Bar chart: delayed dispatches by supplier, 2023."),
+    ("Images", "assets/quarterly_report_chart.png", "Bar chart: on-time delivery rate by quarter."),
+    ("Images", "assets/scanned_supplier_notice.png", "Scanned quality notice about one supplier, read with OCR."),
+    ("Images", "assets/architecture_diagram.png", "Diagram of the system itself."),
+    ("Slides", "assets/quarterly_review.pptx", "Quarterly business review deck."),
 ]
 
 st.set_page_config(
@@ -375,6 +396,27 @@ def _render_analyst_result(result: Dict[str, Any]) -> None:
         st.caption(f"Mode: {meta.get('llm_mode', 'unknown')}")
 
 
+def _render_corpus_panel():
+    """List the demo's documents, with image previews, so visitors know what to ask."""
+    with st.expander("What's in this demo corpus?", expanded=False):
+        st.markdown(
+            "Every answer comes from these files, indexed when the container "
+            "image is built. Ask about anything in them."
+        )
+        images = []
+        for kind, name, description in CORPUS:
+            path = DATA_DIR / name
+            if not path.exists():
+                continue
+            st.markdown(f"**{kind}** · `{Path(name).name}`: {description}")
+            if path.suffix.lower() in (".png", ".jpg", ".jpeg"):
+                images.append((path, Path(name).name))
+        if images:
+            cols = st.columns(len(images))
+            for col, (path, caption) in zip(cols, images):
+                col.image(str(path), caption=caption, width="stretch")
+
+
 def _render_analyst_tab():
     st.markdown("### Agentic Analyst")
     st.markdown(
@@ -383,6 +425,9 @@ def _render_analyst_tab():
         "grades the evidence, retries weak searches, and checks the final answer "
         "against its sources before returning it."
     )
+
+    if DEMO_MODE:
+        _render_corpus_panel()
 
     example = st.selectbox(
         "Try an example",
@@ -397,6 +442,7 @@ def _render_analyst_tab():
         placeholder="e.g., Why are there dispatch delays?",
     )
 
+    st.caption("A full run makes several model calls and usually takes 20 to 60 seconds.")
     if st.button("Run analyst", type="primary", key="analyst_run") and question.strip():
         with st.spinner("Agents working..."):
             result = _api_post(
