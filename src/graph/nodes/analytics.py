@@ -110,7 +110,10 @@ def analytics_node(
             }
         state = dict(state)  # type: ignore[assignment]
 
-    rows = result.get("rows", []) or []
+    # SQLAnalyticsPipeline returns its rows under "results"; "rows" is kept
+    # for other backends. Reading only "rows" dropped every real result set,
+    # so answers leaned on the model's one-line insight instead of the data.
+    rows = result.get("rows") or result.get("results") or []
     insight = str(result.get("insight", "") or "").strip()
 
     content_parts = []
