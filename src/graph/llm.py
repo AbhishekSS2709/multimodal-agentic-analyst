@@ -145,15 +145,52 @@ def resolve_provider() -> tuple[Optional[str], Optional[str]]:
     return provider, model_override or _PROVIDER_DEFAULT_MODEL.get(provider)
 
 
+# Gemini 3 thinks at "high" unless told otherwise. That is right for writing
+# the answer and wasted on yes/no judgements: grading one passage for
+# relevance, picking specialists, checking groundedness. Those run five to
+# fifteen times per question, and at "high" they made a demo question take
+# 40-95 seconds. "low" is accepted by every Gemini 3 model.
+_FAST_THINKING_DEFAULT = "low"
+_THINKING_LEVELS = ("minimal", "low", "medium", "high")
+
+
+def _supports_thinking_level(provider: Optional[str], model: Optional[str]) -> bool:
+    """Only Gemini 3+ takes ``thinking_level``; 2.5 uses a token budget."""
+    name = (model or "").lower().rsplit("/", 1)[-1]
+    return provider == "google_genai" and name.startswith("gemini-") and not name.startswith(
+        ("gemini-1", "gemini-2")
+    )
+
+
+def fast_thinking_level() -> Optional[str]:
+    """Thinking level for short structured judgements, or ``None`` to leave it.
+
+    ``GRAPH_LLM_THINKING_FAST`` overrides the default; ``off`` disables it.
+    """
+    provider, model = resolve_provider()
+    if not _supports_thinking_level(provider, model):
+        return None
+    raw = (os.getenv("GRAPH_LLM_THINKING_FAST") or _FAST_THINKING_DEFAULT).strip().lower()
+    if raw in ("", "off", "none", "default"):
+        return None
+    if raw not in _THINKING_LEVELS:
+        logger.warning("GRAPH_LLM_THINKING_FAST=%r is not one of %s; ignoring.",
+                       raw, ", ".join(_THINKING_LEVELS))
+        return None
+    return raw
+
+
 @lru_cache(maxsize=8)
 def get_llm(
     temperature: Optional[float] = None,
     model: Optional[str] = None,
+    thinking: Optional[str] = None,
 ) -> Optional[Any]:
     """Return a chat model, or ``None`` when no key is configured.
 
-    Cached per (temperature, model) so nodes can call this freely.  Call
-    ``get_llm.cache_clear()`` after changing the environment.
+    Cached per (temperature, model, thinking) so nodes can call this freely.
+    Call ``get_llm.cache_clear()`` after changing the environment.
+    ``thinking`` is a Gemini 3 ``thinking_level``; other models ignore it.
     """
     provider, default_model = resolve_provider()
     if provider is None:
@@ -177,6 +214,9 @@ def get_llm(
         extra = _vertex_config()
     elif not _provider_key(provider):
         return None
+
+    if thinking and _supports_thinking_level(provider, model or default_model):
+        extra["thinking_level"] = thinking
 
     temp = GEMINI_TEMPERATURE if temperature is None else temperature
     try:
@@ -222,8 +262,12 @@ def get_structured_llm(
     schema: type[BaseModel],
     temperature: Optional[float] = None,
 ) -> Optional[Any]:
-    """Return a model constrained to ``schema``, or ``None`` in heuristic mode."""
-    llm = get_llm(temperature)
+    """Return a model constrained to ``schema``, or ``None`` in heuristic mode.
+
+    Structured calls are the graph's short judgements, so they run at
+    :func:`fast_thinking_level`.
+    """
+    llm = get_llm(temperature, None, fast_thinking_level())
     if llm is None:
         return None
     try:

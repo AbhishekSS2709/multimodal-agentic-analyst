@@ -442,7 +442,7 @@ def _render_analyst_tab():
         placeholder="e.g., Why are there dispatch delays?",
     )
 
-    st.caption("A full run makes several model calls and usually takes 20 to 60 seconds.")
+    st.caption("A full run makes several model calls and can take up to a minute. The first question after the demo has been idle takes longer while it wakes up.")
     if st.button("Run analyst", type="primary", key="analyst_run") and question.strip():
         with st.spinner("Agents working..."):
             result = _api_post(
