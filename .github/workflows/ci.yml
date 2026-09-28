@@ -150,3 +150,47 @@ jobs:
       - name: Logs on failure
         if: failure()
         run: docker logs analyst || true
+
+  deploy:
+    name: Deploy to Cloud Run
+    needs: docker
+    # Off until the one-time Google Cloud setup has been run
+    # (deploy/gcp_github_deploy_setup.sh) and the repository variable
+    # CLOUD_RUN_DEPLOY is set to "true".
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.CLOUD_RUN_DEPLOY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write   # lets the job ask GitHub for an OIDC token -- no stored key
+    env:
+      PROJECT_ID: project-5b18fb62-972e-4014-8dc
+      REGION: us-central1
+      SERVICE: multimodal-analyst
+    steps:
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1085215746830/locations/global/workloadIdentityPools/github/providers/github-oidc
+          service_account: github-deployer@project-5b18fb62-972e-4014-8dc.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy this commit's image
+        # The image was published to GHCR by the docker job; Cloud Run pulls it
+        # through the Artifact Registry remote repository that mirrors GHCR.
+        # Service settings (Vertex AI, scale-to-zero, max 1 instance) are kept.
+        run: |
+          IMAGE="$REGION-docker.pkg.dev/$PROJECT_ID/ghcr/${GITHUB_REPOSITORY,,}:${GITHUB_SHA::7}"
+          gcloud run deploy "$SERVICE" --image="$IMAGE" --region="$REGION" --quiet
+          URL=$(gcloud run services describe "$SERVICE" --region="$REGION" --format='value(status.url)')
+          echo "URL=$URL" >> "$GITHUB_ENV"
+          echo "Deployed $IMAGE to $URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Live health check
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf "$URL/_stcore/health" && exit 0
+            sleep 10
+          done
+          echo "::error::Service did not become healthy"; exit 1

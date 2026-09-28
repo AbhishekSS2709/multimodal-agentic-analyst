@@ -100,6 +100,19 @@ gcloud run deploy multimodal-analyst \
   --timeout=300 --allow-unauthenticated
 ```
 
+**Continuous deployment to Cloud Run, keyless.** After the image is
+published, the `deploy` job authenticates to Google Cloud with **Workload
+Identity Federation**: GitHub issues a short-lived OIDC token, Google Cloud
+exchanges it for access as a `github-deployer` service account that can only
+deploy Cloud Run. No service-account key exists anywhere, and the identity
+provider only accepts tokens from this repository's `main` branch. One-time
+setup: `deploy/gcp_github_deploy_setup.sh`, then set the repository variable
+`CLOUD_RUN_DEPLOY=true`.
+
+The live service runs Gemini on **Vertex AI** through its own service
+account (`GOOGLE_GENAI_USE_VERTEXAI=true`, `GOOGLE_CLOUD_LOCATION=global`,
+`GRAPH_LLM_MODEL=gemini-3.8-flash`), so the demo holds no API key either.
+
 **CI/CD** (`.github/workflows/`):
 
 | Workflow | Runs on | What it checks |

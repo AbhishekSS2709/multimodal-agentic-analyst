@@ -359,6 +359,7 @@ def _render_analyst_result(result: Dict[str, Any]) -> None:
         with st.expander(f"Sources ({len(citations)})", expanded=True):
             for c in citations:
                 label = c.get("source") or c.get("doc_id") or "source"
+                label = label.rsplit("/", 1)[-1]  # file name, not the server path
                 who = c.get("specialist")
                 st.markdown(f"**{label}**" + (f"  _via {who}_" if who else ""))
                 if c.get("snippet"):
