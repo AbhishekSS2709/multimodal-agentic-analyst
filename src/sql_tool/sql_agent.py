@@ -43,6 +43,7 @@ Return ONLY the SQL query, nothing else.
 Important rules:
 - Use only SELECT statements (no INSERT, UPDATE, DELETE, DROP, etc.)
 - Use SQLite-compatible syntax (e.g. strftime for dates)
+- Compare text columns only against the values listed under "Known values", spelled exactly as shown
 - Limit results to {max_rows} rows unless the question asks for a specific limit
 """
 

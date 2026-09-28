@@ -19,7 +19,10 @@ contributed to it, or how two entities differ.
 
 Decompose the question into the smallest set of sub-tasks that answers it.
 Rules:
-- Use at most one sub-task per specialist.
+- Use at most one sub-task per specialist, with one exception: when the
+  question asks about several distinct things that need text (for example
+  which supplier is late AND what its contract says about penalties), give
+  `document` one sub-task per part, up to three.
 - Only pick a specialist that genuinely contributes; do not pick all four by default.
 - Always include `document`. Text retrieval is the floor: it is almost
   always worth running, and it is what the answer falls back to when a

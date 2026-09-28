@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import logging
 import operator
+import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Annotated, Any, Dict, List, Tuple, TypedDict
 
@@ -41,6 +43,13 @@ RELEVANCE_THRESHOLD = 0.30
 GRADE_DOC_CHARS = 800
 DEFAULT_MAX_RETRIES = 2
 TOP_K = 5
+
+# Grading calls are independent of each other, so they run concurrently.
+# Sequentially, five grades per attempt were most of a question's latency.
+GRADE_CONCURRENCY = 5
+
+# Separate searches for one compound question (mirrors the supervisor's cap).
+MAX_QUERIES = 3
 
 # Reformulation strategies, applied in order across retry attempts.
 _REWRITE_TEMPLATES = (
@@ -89,17 +98,19 @@ def _grade_documents_llm(
     structured = get_structured_llm(GradeDocuments)
     if structured is None:
         return None
-    graded: List[Tuple[Document, GradeDocuments]] = []
+    prompts = [
+        GRADE_DOCUMENTS_PROMPT.format(
+            subtask=subtask, document=doc.page_content[:GRADE_DOC_CHARS],
+        )
+        for doc in docs
+    ]
     try:
-        for doc in docs:
-            grade = structured.invoke(GRADE_DOCUMENTS_PROMPT.format(
-                subtask=subtask, document=doc.page_content[:GRADE_DOC_CHARS],
-            ))
-            graded.append((doc, grade))
+        with ThreadPoolExecutor(max_workers=min(GRADE_CONCURRENCY, len(prompts))) as pool:
+            grades = list(pool.map(structured.invoke, prompts))
     except Exception as exc:
         logger.warning("LLM grading failed, falling back: %s", exc)
         return None
-    return graded
+    return list(zip(docs, grades))
 
 
 # ---------------------------------------------------------------------------
@@ -217,21 +228,103 @@ def build_document_subgraph(retriever: Any, max_retries: int = DEFAULT_MAX_RETRI
     return builder.compile()
 
 
+# "..., and what ..." / "... and how ..." -- where a second question starts.
+_SECOND_QUESTION = re.compile(
+    r"(?:,\s*and|\band)\s+(?=(?:what|which|how|why|where|when|who|whose|does|do|is|are)\b)",
+    re.IGNORECASE,
+)
+# A part that leans on the other half ("what caused them") is not a usable
+# search on its own.
+_DANGLING = re.compile(r"\b(them|they|it|its|this|that|these|those|their)\b", re.IGNORECASE)
+
+
+def split_compound(question: str) -> List[str]:
+    """Searches for a compound question: the whole question, then each
+    self-contained later part.
+
+    One embedding of "which suppliers are late, and what do the contracts say
+    about penalties?" lands near the delay records and never reaches the
+    penalty clause. Searching the second half on its own does. The whole
+    question stays first so a simple question behaves exactly as before.
+    """
+    question = (question or "").strip()
+    parts = [p.strip(" ,;?") for p in re.split(r"\?\s+(?=\S)", question)]
+    pieces: List[str] = []
+    for part in parts:
+        pieces.extend(p.strip(" ,;?") for p in _SECOND_QUESTION.split(part))
+
+    queries = [question]
+    for piece in pieces[1:]:
+        if len(piece.split()) >= 3 and not _DANGLING.search(piece):
+            queries.append(piece)
+    return list(dict.fromkeys(q for q in queries if q))[:MAX_QUERIES]
+
+
+def document_queries(state: AnalystState) -> List[str]:
+    """What to search for: the supervisor's document sub-tasks when it split
+    the question, otherwise :func:`split_compound`.
+    """
+    planned = [
+        str(task.get("description", "")).strip()
+        for task in state.get("plan") or []
+        if isinstance(task, dict) and task.get("specialist") == "document"
+    ]
+    planned = list(dict.fromkeys(q for q in planned if q))
+    if len(planned) >= 2:
+        return planned[:MAX_QUERIES]
+    return split_compound(state.get("question", "")) or [""]
+
+
+def _merge(findings: List[Finding]) -> List[Finding]:
+    """Drop the same passage found by two searches, keeping its best score."""
+    best: Dict[Tuple[str, str, str], Finding] = {}
+    for f in findings:
+        key = (f.source, f.doc_id, f.content[:200])
+        if key not in best or f.score > best[key].score:
+            best[key] = f
+    return list(best.values())
+
+
 def document_node(state: AnalystState, components: Any) -> Dict[str, Any]:
-    """Run the corrective-RAG subgraph as one node of the analyst graph."""
+    """Run the corrective-RAG subgraph, once per search, as one graph node."""
     backend = getattr(components, "hybrid", None)
     if backend is None:
         return {"findings": [], "trace": ["document:unavailable"]}
 
     subgraph = build_document_subgraph(ChunkRetriever(backend=backend, top_k=TOP_K))
-    try:
-        result = subgraph.invoke({
-            "question": state.get("question", ""),
-            "query": "", "documents": [], "findings": [], "retries": 0, "trace": [],
-        })
-    except Exception as exc:
-        logger.warning("Document subgraph failed: %s", exc)
+    queries = document_queries(state)
+
+    def run(query: str) -> Dict[str, Any] | None:
+        try:
+            return subgraph.invoke({
+                "question": query,
+                "query": "", "documents": [], "findings": [], "retries": 0, "trace": [],
+            })
+        except Exception as exc:
+            logger.warning("Document subgraph failed for %r: %s", query[:60], exc)
+            return None
+
+    if len(queries) == 1:
+        results = [run(queries[0])]
+    else:
+        with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+            results = list(pool.map(run, queries))
+
+    if all(r is None for r in results):
         return {"findings": [], "trace": ["document:unavailable"]}
 
-    return {"findings": result.get("findings", []),
-            "trace": result.get("trace", [])}
+    findings: List[Finding] = []
+    trace: List[str] = []
+    for i, result in enumerate(results, 1):
+        if result is None:
+            trace.append(f"document:q{i}:failed")
+            continue
+        findings.extend(result.get("findings", []))
+        steps = result.get("trace", [])
+        if len(queries) > 1:
+            steps = [f"document:q{i}:{t.split(':', 1)[1]}" if t.startswith("document:") else t
+                     for t in steps]
+        trace.extend(steps)
+
+    return {"findings": _merge(findings) if len(queries) > 1 else findings,
+            "trace": trace}

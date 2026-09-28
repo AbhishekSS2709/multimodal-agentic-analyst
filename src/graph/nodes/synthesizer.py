@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
@@ -112,13 +113,35 @@ def _synthesize_llm(
     if not answer:
         return None
 
-    # Cite every finding the model was shown; the verifier prunes unsupported ones.
+    cited = cited_findings(answer, findings)
     citations = [
         Citation(source=f.source or "unknown", doc_id=f.doc_id,
                  snippet=f.content[:SNIPPET_CHARS], specialist=f.specialist)
-        for f in findings[:MAX_FINDINGS_IN_ANSWER]
+        for f in cited
     ]
     return answer, citations
+
+
+_MARKER = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
+
+
+def cited_findings(answer: str, findings: List[Finding]) -> List[Finding]:
+    """The findings the answer's ``[n]`` markers point at, in marker order.
+
+    Listing the first five findings instead showed sources the answer never
+    used and hid the ones it did: with several specialists reporting, the
+    contract clause an answer quoted as [6] was missing from its own sources.
+    Falls back to the first five when the answer has no usable markers.
+    """
+    picked: List[Finding] = []
+    seen: set[int] = set()
+    for group in _MARKER.findall(answer or ""):
+        for number in group.split(","):
+            index = int(number) - 1
+            if 0 <= index < len(findings) and index not in seen:
+                seen.add(index)
+                picked.append(findings[index])
+    return picked or findings[:MAX_FINDINGS_IN_ANSWER]
 
 
 def synthesizer_node(state: AnalystState) -> Dict[str, Any]:

@@ -37,6 +37,10 @@ LOW_CONFIDENCE = 0.20
 # never fans out to zero usable specialists.  Both planners dispatch it.
 DOCUMENT_FLOOR = "document"
 
+# Upper bound on separate document searches for one compound question. Each
+# search is graded document by document, so this caps the added LLM calls.
+MAX_DOCUMENT_QUERIES = 3
+
 # Causal / multi-hop / comparative phrasing -> the knowledge graph.
 _GRAPH_CUES = (
     "why", "how does", "how do", "affect", "impact", "cause", "contribute",
@@ -145,15 +149,27 @@ def _plan_llm(question: str) -> RoutePlan | None:
         logger.warning("LLM planning failed, falling back: %s", exc)
         return None
 
-    # Drop hallucinated specialists and collapse duplicates.
+    # Drop hallucinated specialists and collapse duplicates. `document` may
+    # keep several sub-tasks -- one search per part of a compound question --
+    # because a single search for "late suppliers and their penalty clauses"
+    # ranks whichever half has more matching text and misses the other.
     seen: set[str] = set()
+    doc_queries: set[str] = set()
     valid: List[SubTask] = []
     for task in plan.subtasks:
         name = (task.specialist or "").strip().lower()
-        if name in SPECIALISTS and name not in seen:
-            seen.add(name)
-            valid.append(SubTask(description=task.description or question,
-                                 specialist=name))
+        if name not in SPECIALISTS:
+            continue
+        description = (task.description or "").strip() or question
+        if name == DOCUMENT_FLOOR:
+            key = description.lower()
+            if key in doc_queries or len(doc_queries) >= MAX_DOCUMENT_QUERIES:
+                continue
+            doc_queries.add(key)
+        elif name in seen:
+            continue
+        seen.add(name)
+        valid.append(SubTask(description=description, specialist=name))
     if not valid:
         logger.warning("LLM plan had no valid specialists; falling back.")
         return None
@@ -168,9 +184,10 @@ def _plan_llm(question: str) -> RoutePlan | None:
     if DOCUMENT_FLOOR not in seen:
         valid.insert(0, SubTask(description=question, specialist=DOCUMENT_FLOOR))
 
-    ordered = {t.specialist: t for t in valid}
+    rank = {name: i for i, name in enumerate(SPECIALISTS)}
     return RoutePlan(
-        subtasks=[ordered[s] for s in SPECIALISTS if s in ordered],
+        # sorted() is stable, so document sub-tasks keep the model's order.
+        subtasks=sorted(valid, key=lambda t: rank[t.specialist]),
         rationale=plan.rationale,
     )
 
@@ -185,7 +202,8 @@ def supervisor_node(state: AnalystState) -> Dict[str, Any]:
         plan = plan_heuristic(question)
         mode = "heuristic"
 
-    specialists = [t.specialist for t in plan.subtasks]
+    # One Send per specialist; the document node reads its sub-tasks from the plan.
+    specialists = list(dict.fromkeys(t.specialist for t in plan.subtasks))
     logger.info("Supervisor (%s) selected: %s", mode, specialists)
 
     return {

@@ -12,7 +12,7 @@ Sample queries (for reference / LLM context):
 
   -- Delayed orders by region
   SELECT region, COUNT(*) AS delayed_count
-  FROM orders WHERE status = 'Delayed'
+  FROM orders WHERE status = 'delayed'
   GROUP BY region ORDER BY delayed_count DESC;
 
   -- Top 10 products by revenue
@@ -189,7 +189,47 @@ def get_schema(db_path: Optional[Path] = None) -> str:
             count = result.scalar()
             lines.append(f"-- {table_name}: {count} rows")
 
+        value_lines = _known_values(conn, inspector)
+        if value_lines:
+            lines.append("")
+            lines.append("Known values (text comparisons are case-sensitive; use these exactly):")
+            lines.extend(value_lines)
+
     return "\n".join(lines)
+
+
+# A column with this many distinct values or fewer is a category (status,
+# region, supplier), and its values belong in the prompt.
+MAX_CATEGORY_VALUES = 12
+
+
+def _known_values(conn, inspector) -> list[str]:
+    """List the values of every low-cardinality text column.
+
+    Without them the model guesses spellings: asked about delayed orders it
+    wrote ``status = 'Delayed'`` against data stored as ``'delayed'``, and the
+    query "succeeded" with zero rows, which reads as "no delays" rather than
+    as an error.
+    """
+    lines: list[str] = []
+    for table_name in inspector.get_table_names():
+        for col in inspector.get_columns(table_name):
+            type_name = str(col["type"]).upper()
+            if not any(t in type_name for t in ("CHAR", "TEXT", "CLOB", "STRING")):
+                continue
+            name = col["name"]
+            try:
+                values = conn.execute(text(
+                    f'SELECT DISTINCT "{name}" FROM "{table_name}" '
+                    f'WHERE "{name}" IS NOT NULL LIMIT {MAX_CATEGORY_VALUES + 1}'
+                )).scalars().all()
+            except Exception as exc:  # a view or odd column must not break the schema
+                logger.debug("Skipping values for %s.%s: %s", table_name, name, exc)
+                continue
+            if 0 < len(values) <= MAX_CATEGORY_VALUES:
+                shown = ", ".join("'" + str(v).replace("'", "''") + "'" for v in sorted(map(str, values)))
+                lines.append(f"    {table_name}.{name}: {shown}")
+    return lines
 
 
 # ---------------------------------------------------------------------------
